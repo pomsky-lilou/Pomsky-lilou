@@ -325,9 +325,6 @@ h3{font-size:.85rem;font-weight:600;letter-spacing:.06em;text-transform:uppercas
       <label>Compte</label>
       <select id="login-user">
         <option value="">— Sélectionner —</option>
-        <option value="lilou">🌸 Lilou (Éleveur)</option>
-        <option value="worker1">👷 Marc (Ouvrier 1)</option>
-        <option value="worker2">👷 Sophie (Ouvrière 2)</option>
       </select>
     </div>
     <div class="form-group">
@@ -682,6 +679,22 @@ function saveState() {
     window._fb.saveToFirebase(state);
   }
 }
+function populateLoginSelect() {
+  const sel = document.getElementById('login-user');
+  if (!sel) return;
+  const current = sel.value;
+  sel.innerHTML = '<option value="">— Sélectionner —</option>';
+  state.accounts.forEach(a => {
+    const icon = a.role === 'admin' ? '🌸' : '👷';
+    const role = a.role === 'admin' ? 'Éleveur' : 'Ouvrier';
+    const opt = document.createElement('option');
+    opt.value = a.id;
+    opt.textContent = icon + ' ' + a.name + ' (' + role + ')';
+    sel.appendChild(opt);
+  });
+  if (current) sel.value = current;
+}
+
 function loadState() {
   // 1. Load from localStorage immediately (fast)
   try {
@@ -690,6 +703,7 @@ function loadState() {
     if (raw) {
       const p = JSON.parse(raw);
       mergeState(p);
+      populateLoginSelect();
     }
   } catch(e) {}
   // 2. Then try Firebase for fresher data
@@ -697,6 +711,7 @@ function loadState() {
     window._fb.loadFromFirebase(function(data) {
       if (data) {
         mergeState(data);
+        populateLoginSelect();
         // Save merged result to localStorage
         try { localStorage.setItem('pomsky_v2', JSON.stringify(state)); } catch(e) {}
         console.log('✅ Données Firebase chargées');
@@ -735,11 +750,13 @@ function startRealtimeSync() {
     // Refresh UI if screens are active
     const adminActive = document.getElementById('screen-admin').classList.contains('active');
     const workerActive = document.getElementById('screen-worker').classList.contains('active');
+    populateLoginSelect();
     if (adminActive) {
       renderAdminLive();
       renderAdminMessages();
       renderArdoise('admin');
       renderReports();
+      renderAccounts();
     }
     if (workerActive) {
       renderLilouMessages();
@@ -1511,13 +1528,13 @@ function renameAccount(id) {
   const newName = prompt('Nouveau prénom pour ce compte :', acc.name);
   if (!newName || !newName.trim()) return;
   acc.name = newName.trim();
-  saveState(); renderAccounts(); showToast('✅ Compte renommé');
+  saveState(); renderAccounts(); populateLoginSelect(); showToast('✅ Compte renommé');
 }
 
 function deleteAccount(id, name) {
   if (!confirm('Supprimer le compte de ' + name + ' ? Cette action est irréversible.')) return;
   state.accounts = state.accounts.filter(a=>a.id!==id);
-  saveState(); renderAccounts(); showToast('🗑️ Compte supprimé');
+  saveState(); renderAccounts(); populateLoginSelect(); showToast('🗑️ Compte supprimé');
 }
 
 function changeOwnPin() {
@@ -1544,7 +1561,7 @@ function addAccount() {
   if (!name||pin.length<4) { showToast('Remplissez tous les champs (PIN 4 chiffres)'); return; }
   const id = name.toLowerCase().replace(/\s+/g,'_')+'_'+Date.now();
   state.accounts.push({id,name,role,pin});
-  saveState(); renderAccounts(); showToast('✅ Compte créé');
+  saveState(); renderAccounts(); populateLoginSelect(); showToast('✅ Compte créé');
 }
 
 function resetPin(userId) {
@@ -1559,6 +1576,7 @@ function resetPin(userId) {
 // ══════════════════════════════════════════
 (function init() {
   loadState();
+  populateLoginSelect();
 
   // Login
   document.getElementById('btn-login').addEventListener('click', doLogin);
