@@ -7,11 +7,10 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#1a3a2a">
 <title>Élevage Pomsky de Lilou</title>
-<!-- Firebase SDK -->
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getDatabase, ref, set, get, onValue, push, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
-
+<!-- Firebase SDK (compat version - works in all browsers) -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
   const firebaseConfig = {
     apiKey: "AIzaSyBhrTrkBQAU7PfkTsvIXJFQVQJEQ5NNlP8",
     authDomain: "pomsky-lilou.firebaseapp.com",
@@ -22,58 +21,54 @@
     appId: "1:404717143128:web:5abd1351d79fa0f92db62d"
   };
 
-  const app = initializeApp(firebaseConfig);
-  const db  = getDatabase(app);
+  try {
+    const app = firebase.initializeApp(firebaseConfig);
+    const db  = firebase.database();
 
-  // ── Expose Firebase helpers to global scope ──
-  window._fb = {
-    db,
-    ref, set, get, onValue, push, update,
+    window._fb = {
+      connected: false,
 
-    // Save entire state to Firebase
-    saveToFirebase: function(stateObj) {
-      const safeState = JSON.parse(JSON.stringify(stateObj));
-      // Remove non-serializable fields
-      delete safeState.currentUser;
-      delete safeState.sessionVacation;
-      delete safeState.sessionStart;
-      delete safeState.taskStatus;
-      delete safeState.remarkLevels;
-      delete safeState.remarkTexts;
-      delete safeState.pendingTaskId;
-      set(ref(db, 'pomsky'), safeState).catch(e => console.warn('Firebase save error:', e));
-    },
+      saveToFirebase: function(stateObj) {
+        try {
+          const safeState = JSON.parse(JSON.stringify(stateObj));
+          delete safeState.currentUser;
+          delete safeState.sessionVacation;
+          delete safeState.sessionStart;
+          delete safeState.taskStatus;
+          delete safeState.remarkLevels;
+          delete safeState.remarkTexts;
+          delete safeState.pendingTaskId;
+          db.ref('pomsky').set(safeState);
+        } catch(e) { console.warn('Firebase save error:', e); }
+      },
 
-    // Load state from Firebase
-    loadFromFirebase: function(callback) {
-      get(ref(db, 'pomsky')).then(snapshot => {
-        if (snapshot.exists()) callback(snapshot.val());
-        else callback(null);
-      }).catch(e => { console.warn('Firebase load error:', e); callback(null); });
-    },
+      loadFromFirebase: function(callback) {
+        db.ref('pomsky').get().then(snapshot => {
+          callback(snapshot.exists() ? snapshot.val() : null);
+        }).catch(e => { console.warn('Firebase load error:', e); callback(null); });
+      },
 
-    // Listen to real-time changes
-    listenFirebase: function(callback) {
-      onValue(ref(db, 'pomsky'), snapshot => {
-        if (snapshot.exists()) callback(snapshot.val());
-      }, e => console.warn('Firebase listen error:', e));
-    },
+      listenFirebase: function(callback) {
+        db.ref('pomsky').on('value', snapshot => {
+          if (snapshot.exists()) callback(snapshot.val());
+        });
+      },
+    };
 
-    // Sync status: online indicator
-    connected: false,
-  };
+    // Connection indicator
+    db.ref('.info/connected').on('value', snapshot => {
+      window._fb.connected = !!snapshot.val();
+      document.querySelectorAll('#sync-indicator').forEach(ind => {
+        ind.textContent = window._fb.connected ? '🟢 Synchronisé' : '🔴 Hors ligne';
+        ind.style.color  = window._fb.connected ? '#27ae60' : '#c0392b';
+      });
+    });
 
-  // Monitor connection state
-  onValue(ref(db, '.info/connected'), snapshot => {
-    window._fb.connected = !!snapshot.val();
-    const ind = document.getElementById('sync-indicator');
-    if (ind) {
-      ind.textContent = window._fb.connected ? '🟢 Synchronisé' : '🔴 Hors ligne';
-      ind.style.color = window._fb.connected ? '#27ae60' : '#c0392b';
-    }
-  });
-
-  console.log('✅ Firebase initialisé — Pomsky de Lilou');
+    console.log('✅ Firebase compat initialisé');
+  } catch(e) {
+    console.warn('Firebase init error:', e);
+    window._fb = null;
+  }
 </script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
