@@ -1,0 +1,1447 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1a3a2a">
+<title>Élevage Pomsky de Lilou</title>
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, set, get, onValue, push, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBhrTrkBQAU7PfkTsvIXJFQVQJEQ5NNlP8",
+    authDomain: "pomsky-lilou.firebaseapp.com",
+    databaseURL: "https://pomsky-lilou-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "pomsky-lilou",
+    storageBucket: "pomsky-lilou.firebasestorage.app",
+    messagingSenderId: "404717143128",
+    appId: "1:404717143128:web:5abd1351d79fa0f92db62d"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db  = getDatabase(app);
+
+  // ── Expose Firebase helpers to global scope ──
+  window._fb = {
+    db,
+    ref, set, get, onValue, push, update,
+
+    // Save entire state to Firebase
+    saveToFirebase: function(stateObj) {
+      const safeState = JSON.parse(JSON.stringify(stateObj));
+      // Remove non-serializable fields
+      delete safeState.currentUser;
+      delete safeState.sessionVacation;
+      delete safeState.sessionStart;
+      delete safeState.taskStatus;
+      delete safeState.remarkLevels;
+      delete safeState.remarkTexts;
+      delete safeState.pendingTaskId;
+      set(ref(db, 'pomsky'), safeState).catch(e => console.warn('Firebase save error:', e));
+    },
+
+    // Load state from Firebase
+    loadFromFirebase: function(callback) {
+      get(ref(db, 'pomsky')).then(snapshot => {
+        if (snapshot.exists()) callback(snapshot.val());
+        else callback(null);
+      }).catch(e => { console.warn('Firebase load error:', e); callback(null); });
+    },
+
+    // Listen to real-time changes
+    listenFirebase: function(callback) {
+      onValue(ref(db, 'pomsky'), snapshot => {
+        if (snapshot.exists()) callback(snapshot.val());
+      }, e => console.warn('Firebase listen error:', e));
+    },
+
+    // Sync status: online indicator
+    connected: false,
+  };
+
+  // Monitor connection state
+  onValue(ref(db, '.info/connected'), snapshot => {
+    window._fb.connected = !!snapshot.val();
+    const ind = document.getElementById('sync-indicator');
+    if (ind) {
+      ind.textContent = window._fb.connected ? '🟢 Synchronisé' : '🔴 Hors ligne';
+      ind.style.color = window._fb.connected ? '#27ae60' : '#c0392b';
+    }
+  });
+
+  console.log('✅ Firebase initialisé — Pomsky de Lilou');
+</script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+:root {
+  --forest:#1a3a2a; --moss:#2d5a3d; --sage:#7aab8a;
+  --cream:#f5f0e8; --parchment:#ede6d4; --amber:#c8860a;
+  --alert:#c0392b; --ok:#27ae60; --warn:#e67e22; --info:#2980b9;
+  --text:#1c2b22; --muted:#6b8070; --border:#d4cdb8;
+  --white:#ffffff; --shadow:0 2px 12px rgba(26,58,42,0.10);
+  --radius:12px; --radius-sm:8px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--text);min-height:100vh;overflow-x:hidden}
+h1,h2{font-family:'DM Serif Display',serif}
+h1{font-size:clamp(1.6rem,5vw,2.4rem);color:var(--forest)}
+h2{font-size:1.2rem;color:var(--moss)}
+h3{font-size:.85rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+
+/* SCREENS */
+.screen{display:none;min-height:100vh}
+.screen.active{display:flex;flex-direction:column}
+
+/* LOGIN */
+#screen-login{background:linear-gradient(160deg,var(--forest) 0%,var(--moss) 60%,var(--sage) 100%);align-items:center;justify-content:center;padding:2rem}
+.login-card{background:var(--white);border-radius:20px;padding:2.5rem 2rem;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.login-logo{text-align:center;margin-bottom:2rem}
+.login-logo .paw{font-size:3.5rem;display:block;margin-bottom:.5rem;animation:float 3s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.login-logo h1{font-size:1.5rem;color:var(--forest)}
+.login-logo p{font-size:.8rem;color:var(--muted);margin-top:.2rem}
+.form-group{margin-bottom:1.2rem}
+.form-group label{display:block;font-size:.78rem;font-weight:600;color:var(--muted);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.04em}
+.form-group select,.form-group input{width:100%;padding:.75rem 1rem;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:1rem;color:var(--text);background:var(--cream);transition:border-color .2s;appearance:none;-webkit-appearance:none}
+.form-group select:focus,.form-group input:focus{outline:none;border-color:var(--moss)}
+.login-error{display:none;background:#fff0f0;border:1.5px solid #f5c6cb;border-radius:8px;padding:.6rem .9rem;margin-bottom:.8rem;font-size:.88rem;color:#c0392b;font-weight:600}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;padding:.8rem 1.5rem;border:none;border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:.95rem;font-weight:600;cursor:pointer;transition:all .2s;text-decoration:none;white-space:nowrap}
+.btn-primary{background:var(--forest);color:var(--white);width:100%;padding:1rem;font-size:1rem}
+.btn-primary:hover{background:var(--moss)}
+.btn-secondary{background:var(--parchment);color:var(--text);border:1.5px solid var(--border)}
+.btn-danger{background:var(--alert);color:var(--white)}
+.btn-warn{background:var(--warn);color:var(--white)}
+.btn-ok{background:var(--ok);color:var(--white)}
+.btn-info{background:var(--info);color:var(--white)}
+.btn-sm{padding:.4rem .8rem;font-size:.8rem}
+.btn-full{width:100%}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* TOPBAR */
+.topbar{background:var(--forest);color:var(--white);padding:.9rem 1.2rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.topbar-brand{display:flex;align-items:center;gap:.6rem}
+.topbar-brand h2{font-family:'DM Serif Display',serif;font-size:1.05rem;color:var(--white);margin:0}
+.topbar-user{display:flex;align-items:center;gap:.7rem}
+.topbar-badge{background:var(--sage);color:var(--forest);padding:.25rem .7rem;border-radius:20px;font-size:.75rem;font-weight:700;letter-spacing:.04em}
+.topbar-badge.admin{background:var(--amber);color:var(--white)}
+.topbar-badge.matin{background:#e8f4fd;color:#1a5276}
+.topbar-badge.soir{background:#fef9e7;color:#7d6608}
+.btn-logout{background:rgba(255,255,255,.12);color:var(--white);border:1px solid rgba(255,255,255,.2);padding:.35rem .8rem;font-size:.78rem;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600}
+
+/* CONTENT */
+.content{flex:1;padding:1.2rem;max-width:720px;margin:0 auto;width:100%}
+.date-header{text-align:center;margin:.8rem 0 1rem;font-family:'DM Serif Display',serif;font-size:1rem;color:var(--muted);letter-spacing:.04em}
+
+/* SESSION INFO */
+.session-info{background:var(--forest);color:white;border-radius:var(--radius);padding:.8rem 1.2rem;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center}
+.si-label{font-size:.72rem;opacity:.7}
+.si-value{font-family:'DM Mono',monospace;font-size:.9rem;font-weight:500}
+
+/* VACATION BADGE */
+.vacation-banner{display:flex;align-items:center;justify-content:center;gap:.6rem;padding:.65rem 1rem;border-radius:var(--radius);margin-bottom:1rem;font-weight:700;font-size:.95rem}
+.vacation-banner.matin{background:#e8f4fd;color:#1a5276;border:1.5px solid #aed6f1}
+.vacation-banner.soir{background:#fef9e7;color:#7d6608;border:1.5px solid #f9e79f}
+
+/* PROGRESS */
+.progress-wrap{margin-bottom:1rem}
+.progress-bar-bg{height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.progress-bar-fill{height:100%;background:linear-gradient(90deg,var(--moss),var(--sage));border-radius:3px;transition:width .4s ease}
+.progress-label{display:flex;justify-content:space-between;font-size:.78rem;color:var(--muted);margin-bottom:.4rem}
+
+/* ZONE CARDS */
+.zone-card{background:var(--white);border-radius:var(--radius);margin-bottom:1rem;box-shadow:var(--shadow);overflow:hidden;border:1.5px solid var(--border)}
+.zone-header{padding:.85rem 1.1rem;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
+.zone-header.nurserie2{background:linear-gradient(90deg,#1a3a2a,#2d5a3d);color:white}
+.zone-header.nurserie1{background:linear-gradient(90deg,#2d5a3d,#4a7a5a);color:white}
+.zone-header.parc{background:linear-gradient(90deg,#4a5a2a,#6a7a3a);color:white}
+.zone-header.remarks{background:linear-gradient(90deg,#5a3a1a,#7a5a2a);color:white}
+.zone-header.eleveur{background:linear-gradient(90deg,#3a1a5a,#5a2a7a);color:white}
+.zone-header.ardoise{background:linear-gradient(90deg,#1a3a5a,#2a5a7a);color:white}
+.zone-title{display:flex;align-items:center;gap:.6rem}
+.zone-title h2{font-family:'DM Serif Display',serif;font-size:1rem;color:white;margin:0}
+.zone-progress{display:flex;align-items:center;gap:.6rem}
+.zone-count{font-size:.78rem;font-weight:600;opacity:.9}
+.zone-chevron{font-size:.9rem;transition:transform .3s}
+.zone-chevron.open{transform:rotate(180deg)}
+.zone-body{padding:.8rem 1rem 1rem}
+.zone-body.collapsed{display:none}
+
+/* TASK ITEMS */
+.task-item{display:flex;align-items:center;gap:.8rem;padding:.65rem .8rem;border-radius:var(--radius-sm);margin-bottom:.35rem;background:var(--cream);border:1.5px solid transparent;transition:all .2s;position:relative}
+.task-item.locked{opacity:.4;cursor:not-allowed;background:#f0ede6}
+.task-item.done{background:#edf7f0;border-color:#b8dfc5}
+.task-item.current{background:#fff8e6;border-color:var(--amber);box-shadow:0 0 0 2px rgba(200,134,10,.15)}
+@keyframes task-highlight{0%{box-shadow:0 0 0 5px rgba(200,134,10,.5)}100%{box-shadow:0 0 0 0 rgba(200,134,10,0)}}
+.task-item.just-current{animation:task-highlight 1.3s ease-out}
+.task-num{font-family:'DM Mono',monospace;font-size:.7rem;font-weight:500;color:var(--muted);min-width:20px}
+.task-check{width:26px;height:26px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all .2s;background:white;font-size:.85rem}
+.task-item.done .task-check{background:var(--ok);border-color:var(--ok);color:white}
+.task-item.current .task-check{border-color:var(--amber)}
+.task-item.locked .task-check{cursor:not-allowed}
+.task-label{flex:1;font-size:.9rem;line-height:1.3}
+.task-item.done .task-label{color:var(--muted);text-decoration:line-through}
+.task-time{font-family:'DM Mono',monospace;font-size:.68rem;color:var(--ok);font-weight:500;white-space:nowrap}
+
+/* ALERTE BEBE */
+.alerte-bebe-btn{width:100%;padding:1rem;margin:1rem 0;background:linear-gradient(135deg,var(--alert),#e74c3c);color:white;border:none;border-radius:var(--radius);font-size:1rem;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.6rem;box-shadow:0 4px 15px rgba(192,57,43,.35);animation:pulse-red 2.5s ease-in-out infinite}
+@keyframes pulse-red{0%,100%{box-shadow:0 4px 15px rgba(192,57,43,.35)}50%{box-shadow:0 4px 25px rgba(192,57,43,.6)}}
+
+/* FIN DE SERVICE */
+.fin-service-section{background:white;border-radius:var(--radius);padding:1.2rem;margin:1rem 0;border:1.5px solid var(--border);box-shadow:var(--shadow);text-align:center}
+.fin-service-section.releve{border-color:var(--info);background:#f0f8ff}
+.fin-service-section h3{margin-bottom:.4rem;color:var(--forest)}
+.fin-service-section p{font-size:.85rem;color:var(--muted);margin-bottom:.9rem}
+
+/* REMARKS */
+.remark-item{background:var(--cream);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:.8rem;margin-bottom:.6rem}
+.remark-label{font-size:.85rem;font-weight:600;color:var(--text);margin-bottom:.5rem}
+.remark-levels{display:flex;flex-wrap:wrap;gap:.4rem}
+.level-btn{padding:.28rem .65rem;border-radius:20px;font-size:.73rem;font-weight:600;border:1.5px solid transparent;cursor:pointer;transition:all .2s;font-family:'DM Sans',sans-serif}
+.level-btn[data-level="OK"]{border-color:var(--ok);color:var(--ok)}
+.level-btn[data-level="Faible"]{border-color:var(--warn);color:var(--warn)}
+.level-btn[data-level="Vide"]{border-color:var(--alert);color:var(--alert)}
+.level-btn[data-level="Urgent"]{background:var(--alert);color:white}
+.level-btn[data-level="A changer"]{border-color:var(--info);color:var(--info)}
+.level-btn[data-level="A réparer"]{border-color:#8e44ad;color:#8e44ad}
+.level-btn.selected[data-level="OK"]{background:var(--ok);color:white}
+.level-btn.selected[data-level="Faible"]{background:var(--warn);color:white}
+.level-btn.selected[data-level="Vide"]{background:var(--alert);color:white}
+.level-btn.selected[data-level="A changer"]{background:var(--info);color:white}
+.level-btn.selected[data-level="A réparer"]{background:#8e44ad;color:white}
+.remark-text{width:100%;margin-top:.6rem;padding:.6rem .8rem;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:.88rem;background:white;resize:vertical;min-height:56px}
+.remark-text:focus{outline:none;border-color:var(--moss)}
+
+/* ARDOISE / CHAT */
+.ardoise-messages{max-height:320px;overflow-y:auto;margin-bottom:.8rem;display:flex;flex-direction:column;gap:.5rem}
+.ardoise-msg{padding:.55rem .85rem;border-radius:10px;max-width:88%;font-size:.88rem;line-height:1.4}
+.ardoise-msg.mine{background:var(--moss);color:white;align-self:flex-end;border-bottom-right-radius:3px}
+.ardoise-msg.other{background:var(--parchment);color:var(--text);border:1.5px solid var(--border);align-self:flex-start;border-bottom-left-radius:3px}
+.ardoise-msg.lilou{background:linear-gradient(135deg,#3a1a5a,#5a2a7a);color:white;align-self:flex-start;border-bottom-left-radius:3px}
+.ardoise-meta{font-size:.68rem;opacity:.7;margin-bottom:.2rem;font-weight:600}
+.ardoise-input-row{display:flex;gap:.5rem}
+.ardoise-input{flex:1;padding:.6rem .9rem;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:.88rem;background:var(--cream)}
+.ardoise-input:focus{outline:none;border-color:var(--moss)}
+
+/* LILOU MESSAGES BANNER */
+.lilou-messages{background:linear-gradient(135deg,#3a1a5a,#5a2a7a);border-radius:var(--radius);padding:.9rem 1.1rem;margin-bottom:1rem;color:white}
+.lilou-messages h3{color:rgba(255,255,255,.7);margin-bottom:.5rem;font-size:.72rem}
+.lilou-msg-item{background:rgba(255,255,255,.12);border-radius:8px;padding:.5rem .8rem;margin-bottom:.4rem;font-size:.88rem;border-left:3px solid var(--sage)}
+.lilou-msg-item:last-child{margin-bottom:0}
+.lilou-msg-meta{font-size:.7rem;opacity:.65;margin-bottom:.2rem}
+
+/* RELEVE STATUS */
+.releve-status{background:#e8f4fd;border:1.5px solid #aed6f1;border-radius:var(--radius);padding:.8rem 1rem;margin-bottom:1rem;font-size:.85rem}
+.releve-status strong{color:#1a5276;display:block;margin-bottom:.2rem}
+
+/* ADMIN BOTTOM NAV */
+.admin-bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--forest);display:flex;z-index:200;box-shadow:0 -2px 12px rgba(0,0,0,.25);padding-bottom:env(safe-area-inset-bottom,0px)}
+.admin-bottom-nav button{flex:1;padding:.6rem .2rem .5rem;background:transparent;border:none;color:rgba(255,255,255,.5);font-family:'DM Sans',sans-serif;font-size:.6rem;font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:.15rem;text-transform:uppercase;transition:color .2s}
+.admin-bottom-nav button .nav-icon{font-size:1.2rem;line-height:1}
+.admin-bottom-nav button.active{color:var(--sage)}
+.admin-bottom-nav button:hover{color:var(--white)}
+#screen-admin .content{padding-bottom:5.5rem;max-width:800px}
+
+/* ADMIN PANELS */
+.admin-panel{display:none}
+.admin-panel.active{display:block}
+
+/* TASK MANAGER */
+.task-manager-item{background:white;border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:.65rem .9rem;margin-bottom:.4rem;display:flex;align-items:center;gap:.6rem}
+.task-manager-item input[type=text]{flex:1;border:none;background:transparent;font-family:'DM Sans',sans-serif;font-size:.88rem;color:var(--text)}
+.task-manager-item input[type=text]:focus{outline:none}
+.zone-select,.vacation-select{padding:.3rem .5rem;border:1.5px solid var(--border);border-radius:6px;font-size:.75rem;color:var(--muted);font-family:'DM Sans',sans-serif;background:var(--cream)}
+
+/* REPORT / SIMO */
+.report-card{background:white;border-radius:var(--radius);border:1.5px solid var(--border);margin-bottom:.8rem;overflow:hidden;box-shadow:var(--shadow)}
+.report-card-header{padding:.7rem 1rem;background:var(--parchment);display:flex;justify-content:space-between;align-items:center}
+.report-card-header strong{font-size:.9rem;color:var(--forest)}
+.report-card-body{padding:.8rem 1rem}
+.simo-wrap{overflow-x:auto;margin-top:.6rem}
+.simo-table{border-collapse:collapse;width:100%;min-width:460px;font-size:.76rem}
+.simo-table th{background:var(--forest);color:white;padding:.45rem .65rem;text-align:left}
+.simo-table td{padding:.4rem .65rem;border-bottom:1px solid var(--border)}
+.simo-table tr:nth-child(even) td{background:var(--cream)}
+.vacation-label{display:inline-block;padding:.15rem .5rem;border-radius:10px;font-size:.7rem;font-weight:700;margin-bottom:.4rem}
+.vacation-label.matin{background:#e8f4fd;color:#1a5276}
+.vacation-label.soir{background:#fef9e7;color:#7d6608}
+
+/* PERIODIC */
+.periodic-item{background:#fff8e6;border:1.5px solid var(--amber);border-radius:var(--radius-sm);padding:.7rem .9rem;margin-bottom:.5rem}
+.periodic-label{font-size:.85rem;font-weight:600;color:#7a5200}
+.periodic-meta{font-size:.75rem;color:var(--muted);margin-top:.2rem}
+
+/* ACCOUNTS */
+.account-card{background:white;border:1.5px solid var(--border);border-radius:var(--radius);padding:1rem;margin-bottom:.6rem;display:flex;align-items:center;gap:.8rem;box-shadow:var(--shadow)}
+.account-avatar{width:42px;height:42px;border-radius:50%;background:var(--moss);color:white;display:flex;align-items:center;justify-content:center;font-family:'DM Serif Display',serif;font-size:1.1rem;flex-shrink:0}
+.account-avatar.admin{background:var(--amber)}
+.account-info{flex:1}
+.account-info strong{font-size:.92rem;display:block}
+.account-info span{font-size:.76rem;color:var(--muted)}
+.account-badge{font-size:.68rem;font-weight:700;padding:.18rem .5rem;border-radius:12px;text-transform:uppercase;letter-spacing:.05em}
+.account-badge.admin{background:#fff3cd;color:#7a5200}
+.account-badge.worker{background:#d4edda;color:#155724}
+
+/* MSG COMPOSE */
+.msg-compose{background:white;border:1.5px solid var(--border);border-radius:var(--radius);padding:1rem;margin-bottom:.8rem}
+.msg-compose textarea,.remark-text{width:100%;padding:.6rem .8rem;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:.88rem;resize:vertical;min-height:68px;margin-bottom:.5rem;background:var(--cream)}
+.msg-compose textarea:focus{outline:none;border-color:var(--moss)}
+.msg-item{background:var(--parchment);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:.6rem .9rem;margin-bottom:.5rem;display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem}
+.msg-item-body{font-size:.87rem;flex:1;line-height:1.4}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:500;align-items:center;justify-content:center;padding:1.5rem}
+.modal-overlay.open{display:flex}
+.modal{background:white;border-radius:16px;padding:1.8rem;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);animation:modal-in .22s ease}
+@keyframes modal-in{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
+.modal h2{font-family:'DM Serif Display',serif;color:var(--forest);margin-bottom:.7rem;font-size:1.25rem}
+.modal p{font-size:.88rem;color:var(--muted);margin-bottom:1.1rem;line-height:1.5}
+.modal-actions{display:flex;gap:.6rem;flex-direction:column}
+
+/* TOAST */
+.toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--forest);color:white;padding:.75rem 1.5rem;border-radius:30px;font-size:.88rem;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.3);z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1}
+
+.inline-form{display:flex;gap:.6rem;align-items:flex-end;flex-wrap:wrap;margin-top:.7rem}
+.inline-form .form-group{margin:0;flex:1;min-width:120px}
+.inline-form label{display:block;font-size:.73rem;font-weight:600;color:var(--muted);margin-bottom:.28rem;text-transform:uppercase}
+.inline-form input,.inline-form select{width:100%;padding:.55rem .75rem;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:.85rem;background:var(--cream)}
+
+@media(max-width:480px){.content{padding:.8rem}.topbar{padding:.7rem .9rem}.zone-body{padding:.6rem .8rem .8rem}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="screen-login" class="screen active">
+  <div class="login-card">
+    <div class="login-logo">
+      <span class="paw">🐾</span>
+      <h1>Pomsky de Lilou</h1>
+      <p>Gestion de l'élevage</p>
+    </div>
+    <div class="form-group">
+      <label>Compte</label>
+      <select id="login-user">
+        <option value="">— Sélectionner —</option>
+        <option value="lilou">🌸 Lilou (Éleveur)</option>
+        <option value="worker1">👷 Marc (Ouvrier 1)</option>
+        <option value="worker2">👷 Sophie (Ouvrière 2)</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Code PIN</label>
+      <input type="password" id="login-pin" placeholder="••••" maxlength="4" inputmode="numeric">
+    </div>
+    <div class="login-error" id="login-error"></div>
+    <button class="btn btn-primary" id="btn-login">Connexion</button>
+    <p style="text-align:center;font-size:.72rem;color:var(--muted);margin-top:.8rem">Version démo — PIN : 1234 pour tous</p>
+  </div>
+</div>
+
+<!-- WORKER SCREEN -->
+<div id="screen-worker" class="screen">
+  <div class="topbar">
+    <div class="topbar-brand">
+      <span style="font-size:1.3rem">🐾</span>
+      <h2>Pomsky de Lilou</h2>
+    </div>
+    <div class="topbar-user">
+      <span class="topbar-badge" id="worker-badge-vacation"></span>
+      <span id="sync-indicator" style="font-size:.65rem;font-weight:600;color:var(--sage)">🔄 Connexion…</span><button class="btn-logout" id="btn-logout-worker">Quitter</button>
+    </div>
+  </div>
+  <div class="content">
+    <div class="date-header" id="worker-date"></div>
+
+    <!-- Releve info if morning done -->
+    <div id="releve-status" style="display:none" class="releve-status">
+      <strong>🔄 Relève de la matinée</strong>
+      <span id="releve-status-text"></span>
+    </div>
+
+    <!-- Session info -->
+    <div class="session-info">
+      <div>
+        <div class="si-label" id="vacation-label-top">Vacation</div>
+        <div class="si-value" id="session-start-display">—</div>
+      </div>
+      <div style="text-align:right">
+        <div class="si-label">Progression</div>
+        <div class="si-value" id="session-done-count">0 / 0</div>
+      </div>
+    </div>
+
+    <!-- Alerte bébé -->
+    <button class="alerte-bebe-btn" id="btn-alerte-bebe">🚨 ALERTE BÉBÉ — Urgence</button>
+
+    <!-- Progress -->
+    <div class="progress-wrap">
+      <div class="progress-label"><span>Avancement</span><span id="global-pct">0%</span></div>
+      <div class="progress-bar-bg"><div class="progress-bar-fill" id="global-bar" style="width:0%"></div></div>
+    </div>
+
+    <!-- Lilou messages -->
+    <div id="lilou-messages-banner" style="display:none" class="lilou-messages">
+      <h3>🌸 Messages de Lilou</h3>
+      <div id="lilou-messages-content"></div>
+    </div>
+
+    <!-- Zones -->
+    <div id="zones-container"></div>
+
+    <!-- Fin de service -->
+    <div class="fin-service-section" id="fin-service-section" style="display:none">
+      <h3 id="fin-service-title">Fin de service</h3>
+      <p id="fin-service-text">Toutes les tâches sont complétées.</p>
+      <button class="btn btn-warn btn-full" id="btn-fin-service">🔚 Clôturer ma vacation</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN SCREEN -->
+<div id="screen-admin" class="screen">
+  <div class="topbar">
+    <div class="topbar-brand">
+      <span style="font-size:1.3rem">🐾</span>
+      <h2>Pomsky de Lilou — Admin</h2>
+    </div>
+    <div class="topbar-user">
+      <span class="topbar-badge admin">Éleveur</span>
+      <span id="sync-indicator" style="font-size:.65rem;font-weight:600;color:var(--sage)">🔄 Connexion…</span><button class="btn-logout" id="btn-logout-admin">Quitter</button>
+    </div>
+  </div>
+
+  <nav id="admin-bottom-nav" class="admin-bottom-nav">
+    <button id="nav-tableau"      class="active" data-tab="tableau">     <span class="nav-icon">📊</span>Tableau</button>
+    <button id="nav-messages"     data-tab="messages">  <span class="nav-icon">💬</span>Messages</button>
+    <button id="nav-ardoise"      data-tab="ardoise">   <span class="nav-icon">📝</span>Ardoise</button>
+    <button id="nav-taches"       data-tab="taches">    <span class="nav-icon">✏️</span>Tâches</button>
+    <button id="nav-rapports"     data-tab="rapports">  <span class="nav-icon">📋</span>Rapports</button>
+    <button id="nav-comptes"      data-tab="comptes">   <span class="nav-icon">👤</span>Comptes</button>
+  </nav>
+
+  <div class="content">
+    <div class="date-header" id="admin-date"></div>
+
+    <!-- TABLEAU DE BORD -->
+    <div id="panel-tableau" class="admin-panel active">
+      <div id="admin-live-zones"></div>
+      <div style="margin-top:1rem">
+        <h3 style="margin-bottom:.6rem">🔔 Alertes du jour</h3>
+        <div id="admin-alerts-list"><p style="color:var(--muted);font-size:.85rem">Aucune alerte.</p></div>
+      </div>
+    </div>
+
+    <!-- MESSAGES LILOU → OUVRIERS -->
+    <div id="panel-messages" class="admin-panel">
+      <h3 style="margin-bottom:.8rem">Messages publiés aux ouvriers</h3>
+      <div class="msg-compose">
+        <h3 style="margin-bottom:.6rem;color:var(--forest)">Nouveau message</h3>
+        <select id="msg-type" style="width:100%;padding:.6rem .8rem;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;margin-bottom:.6rem;background:var(--cream)">
+          <option value="chiots">🐶 Mouvement des chiots</option>
+          <option value="chiens">🐕 Mouvement des chiens</option>
+          <option value="info">ℹ️ Information générale</option>
+        </select>
+        <textarea id="msg-body" placeholder="Rédigez votre message..."></textarea>
+        <button class="btn btn-ok btn-sm" id="btn-publish-msg">📢 Publier</button>
+      </div>
+      <div id="admin-messages-list"><p style="color:var(--muted);font-size:.85rem">Aucun message.</p></div>
+    </div>
+
+    <!-- ARDOISE COMMUNE -->
+    <div id="panel-ardoise" class="admin-panel">
+      <h3 style="margin-bottom:.5rem">Ardoise commune — équipe</h3>
+      <p style="font-size:.82rem;color:var(--muted);margin-bottom:.9rem">Notes visibles par tous. Lilou peut intervenir à tout moment.</p>
+      <div class="zone-card">
+        <div class="zone-header ardoise" onclick="toggleZone('ardoise-body',this)">
+          <div class="zone-title"><span style="font-size:1.2rem">📝</span><h2>Ardoise de l'équipe</h2></div>
+          <span class="zone-chevron open">▾</span>
+        </div>
+        <div class="zone-body" id="ardoise-body">
+          <div class="ardoise-messages" id="ardoise-msgs-admin"></div>
+          <div class="ardoise-input-row">
+            <input class="ardoise-input" id="ardoise-input-admin" placeholder="Écrire un message..." maxlength="300">
+            <button class="btn btn-ok btn-sm" id="btn-ardoise-admin">Envoyer</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GESTION TÂCHES -->
+    <div id="panel-taches" class="admin-panel">
+      <h3 style="margin-bottom:.8rem">Protocole — gestion des tâches</h3>
+      <div style="display:flex;gap:.5rem;margin-bottom:.8rem">
+        <button class="btn btn-secondary btn-sm vacation-filter-btn active" data-vac="matin" id="filter-matin">☀️ Matin</button>
+        <button class="btn btn-secondary btn-sm vacation-filter-btn" data-vac="soir" id="filter-soir">🌙 Soir</button>
+      </div>
+      <div id="task-manager-list"></div>
+      <div style="margin-top:.8rem;display:flex;gap:.6rem;flex-wrap:wrap">
+        <button class="btn btn-secondary btn-sm" id="btn-add-task">➕ Ajouter une tâche</button>
+        <button class="btn btn-ok btn-sm" id="btn-save-tasks">💾 Sauvegarder</button>
+      </div>
+      <div style="margin-top:1.2rem">
+        <h3 style="margin-bottom:.8rem">Tâches périodiques</h3>
+        <div id="periodic-list"></div>
+        <div style="background:white;border:1.5px solid var(--border);border-radius:var(--radius);padding:1rem;margin-top:.7rem">
+          <div class="form-group"><label>Description</label><input type="text" id="pt-label" placeholder="Ex: Soins mamelles chienne Bella"></div>
+          <div class="inline-form" style="margin-bottom:.6rem">
+            <div class="form-group">
+              <label>Zone</label>
+              <select id="pt-zone"><option value="nurserie2">Nurserie 2</option><option value="nurserie1">Nurserie 1</option><option value="parc">Parc</option></select>
+            </div>
+            <div class="form-group">
+              <label>Vacation</label>
+              <select id="pt-vac"><option value="matin">☀️ Matin</option><option value="soir">🌙 Soir</option></select>
+            </div>
+            <div class="form-group"><label>Après tâche n°</label><input type="number" id="pt-after" min="1" placeholder="4"></div>
+          </div>
+          <div class="inline-form">
+            <div class="form-group"><label>Début</label><input type="date" id="pt-start"></div>
+            <div class="form-group"><label>Fin</label><input type="date" id="pt-end"></div>
+          </div>
+          <button class="btn btn-ok btn-sm" style="margin-top:.7rem" id="btn-add-periodic">Ajouter</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RAPPORTS -->
+    <div id="panel-rapports" class="admin-panel">
+      <h3 style="margin-bottom:.8rem">Rapports consolidés (3 mois)</h3>
+      <div id="reports-list"><p style="color:var(--muted);font-size:.85rem">Aucun rapport.</p></div>
+    </div>
+
+    <!-- COMPTES -->
+    <div id="panel-comptes" class="admin-panel">
+      <h3 style="margin-bottom:.8rem">Gestion des comptes</h3>
+      <div id="accounts-list"></div>
+      <div style="background:white;border:1.5px solid var(--border);border-radius:var(--radius);padding:1rem;margin-top:.8rem">
+        <h3 style="margin-bottom:.7rem;color:var(--forest)">Ajouter un compte</h3>
+        <div class="inline-form">
+          <div class="form-group"><label>Prénom</label><input type="text" id="new-name" placeholder="Prénom"></div>
+          <div class="form-group"><label>Rôle</label><select id="new-role"><option value="worker">Ouvrier</option><option value="admin">Éleveur</option></select></div>
+          <div class="form-group"><label>PIN</label><input type="password" id="new-pin" maxlength="4" placeholder="••••" inputmode="numeric"></div>
+        </div>
+        <button class="btn btn-ok btn-sm" style="margin-top:.7rem" id="btn-add-account">Créer le compte</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODALS -->
+<div id="modal-alerte" class="modal-overlay">
+  <div class="modal">
+    <h2>🚨 Alerte Bébé</h2>
+    <p>Vous allez envoyer une <strong>ALERTE URGENTE</strong> à l'éleveur. Confirmez-vous ?</p>
+    <div class="modal-actions">
+      <button class="btn btn-danger" id="btn-confirm-alerte">✅ Confirmer — Envoyer l'alerte</button>
+      <button class="btn btn-secondary" data-close="modal-alerte">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-alerte-sent" class="modal-overlay">
+  <div class="modal">
+    <h2>📱 Alerte envoyée</h2>
+    <p style="font-size:1rem;color:var(--alert);font-weight:600">⚠️ Appelez l'éleveur maintenant !</p>
+    <p>L'alerte a été enregistrée. Contactez Lilou immédiatement.</p>
+    <div class="modal-actions"><button class="btn btn-primary" data-close="modal-alerte-sent">Compris</button></div>
+  </div>
+</div>
+
+<div id="modal-task" class="modal-overlay">
+  <div class="modal">
+    <h2>Valider la tâche</h2>
+    <p id="modal-task-body"></p>
+    <div class="modal-actions">
+      <button class="btn btn-ok" id="btn-confirm-task">✅ Valider</button>
+      <button class="btn btn-secondary" data-close="modal-task">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-fin-service" class="modal-overlay">
+  <div class="modal">
+    <h2 id="modal-fin-title">Clôturer la vacation</h2>
+    <p id="modal-fin-body">Confirmez-vous la fin de votre service ? L'ouvrier suivant pourra prendre la relève.</p>
+    <div class="modal-actions">
+      <button class="btn btn-warn" id="btn-confirm-fin">🔚 Confirmer la clôture</button>
+      <button class="btn btn-secondary" data-close="modal-fin-service">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+// ══════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════
+const DEMO_ACCOUNTS = [
+  {id:'lilou',   name:'Lilou',  role:'admin',  pin:'1234'},
+  {id:'worker1', name:'Marc',   role:'worker', pin:'1234'},
+  {id:'worker2', name:'Sophie', role:'worker', pin:'1234'},
+];
+
+const DEFAULT_TASKS_MATIN = [
+  {id:1, zone:'nurserie2', num:1,  label:"Observer l'état de santé"},
+  {id:2, zone:'nurserie2', num:2,  label:"1/4 de repas — eau"},
+  {id:3, zone:'nurserie1', num:3,  label:"Observer l'état de santé"},
+  {id:4, zone:'nurserie1', num:4,  label:"1/4 de repas — eau"},
+  {id:5, zone:'parc',      num:5,  label:"Ouverture aux chiens"},
+  {id:6, zone:'parc',      num:6,  label:"Fermeture parc préau & préau"},
+  {id:7, zone:'parc',      num:7,  label:"Repas complet — eau"},
+  {id:8, zone:'nurserie2', num:8,  label:"Nettoyage intérieur (javel, balai)"},
+  {id:9, zone:'nurserie2', num:9,  label:"Nettoyage haute pression extérieur N1 terrasse"},
+  {id:10,zone:'nurserie2', num:10, label:"Reste du repas dehors N1 terrasse"},
+  {id:11,zone:'nurserie2', num:11, label:"Nettoyage niveau 2 terrasse"},
+  {id:12,zone:'nurserie2', num:12, label:"Nettoyage et débouchage caniveau"},
+  {id:13,zone:'nurserie1', num:13, label:"Nettoyage intérieur (javel, balai)"},
+  {id:14,zone:'nurserie1', num:14, label:"Reste du repas — eau"},
+  {id:15,zone:'nurserie1', num:15, label:"Nettoyage espace extérieur"},
+  {id:16,zone:'parc',      num:16, label:"Nettoyage dortoirs (déchets, désinfection bio)"},
+  {id:17,zone:'parc',      num:17, label:"Nettoyage préau (haute pression)"},
+  {id:18,zone:'parc',      num:18, label:"Nettoyage parc préau / matériel et seau"},
+  {id:19,zone:'nurserie2', num:19, label:"Rinçage post repas terrasse / caniveau / matériel"},
+  {id:20,zone:'nurserie1', num:20, label:"Nettoyage post repas / matériel et seau"},
+];
+const DEFAULT_TASKS_SOIR = [
+  {id:101,zone:'nurserie2', num:1,  label:"Observer l'état de santé (soir)"},
+  {id:102,zone:'nurserie2', num:2,  label:"Repas du soir — eau"},
+  {id:103,zone:'nurserie1', num:3,  label:"Observer l'état de santé (soir)"},
+  {id:104,zone:'nurserie1', num:4,  label:"Repas du soir — eau"},
+  {id:105,zone:'parc',      num:5,  label:"Vérification parc et dortoirs"},
+  {id:106,zone:'parc',      num:6,  label:"Fermeture nocturne des accès"},
+  {id:107,zone:'nurserie2', num:7,  label:"Nettoyage intérieur soir"},
+  {id:108,zone:'nurserie1', num:8,  label:"Nettoyage intérieur soir"},
+  {id:109,zone:'parc',      num:9,  label:"Vérification eau dortoirs"},
+  {id:110,zone:'parc',      num:10, label:"Rangement matériel"},
+];
+
+const REMARK_OPERATOR = [
+  {id:'croquettes', label:"État stock croquettes",         type:'level'},
+  {id:'entretien',  label:"État stock produits d'entretien", type:'level'},
+  {id:'materiel',   label:"État matériel",                 type:'level'},
+  {id:'divers',     label:"Divers",                        type:'text'},
+];
+const REMARK_ELEVEUR = [
+  {id:'chiots', label:"Mouvement des chiots", type:'text'},
+  {id:'chiens', label:"Mouvement des chiens", type:'text'},
+];
+const LEVELS = ['OK','Faible','Vide','Urgent','A changer','A réparer'];
+const ZONES_META = {
+  nurserie2:{label:'Nurserie 2',   icon:'🍼', cls:'nurserie2'},
+  nurserie1:{label:'Nurserie 1',   icon:'🐶', cls:'nurserie1'},
+  parc:     {label:'Parc Principal',icon:'🌳', cls:'parc'},
+};
+
+let state = {
+  currentUser: null,
+  accounts: JSON.parse(JSON.stringify(DEMO_ACCOUNTS)),
+  tasksMatin: JSON.parse(JSON.stringify(DEFAULT_TASKS_MATIN)),
+  tasksSoir:  JSON.parse(JSON.stringify(DEFAULT_TASKS_SOIR)),
+  periodics:  [],
+  // Today's day data — keyed by date
+  dayData: {},   // {date: {matin:{status,start,end,taskStatus,remarks}, soir:{...}}}
+  // current session
+  sessionVacation: null,  // 'matin' | 'soir'
+  sessionStart: null,
+  taskStatus: {},
+  remarkLevels: {},
+  remarkTexts: {},
+  pendingTaskId: null,
+  reports: [],
+  alerts: [],
+  messages: [],
+  ardoise: [],
+};
+
+// ── STORAGE ──
+let _mem = {};
+function saveState() {
+  const d = JSON.stringify(state);
+  try { localStorage.setItem('pomsky_v2', d); } catch(e) { _mem.s = d; }
+  // Sync to Firebase if available
+  if (window._fb && window._fb.connected) {
+    window._fb.saveToFirebase(state);
+  }
+}
+function loadState() {
+  // 1. Load from localStorage immediately (fast)
+  try {
+    let raw = null;
+    try { raw = localStorage.getItem('pomsky_v2'); } catch(e) { raw = _mem.s || null; }
+    if (raw) {
+      const p = JSON.parse(raw);
+      mergeState(p);
+    }
+  } catch(e) {}
+  // 2. Then try Firebase for fresher data
+  if (window._fb) {
+    window._fb.loadFromFirebase(function(data) {
+      if (data) {
+        mergeState(data);
+        // Save merged result to localStorage
+        try { localStorage.setItem('pomsky_v2', JSON.stringify(state)); } catch(e) {}
+        console.log('✅ Données Firebase chargées');
+      }
+    });
+  }
+}
+
+function mergeState(p) {
+  ['accounts','tasksMatin','tasksSoir','periodics','dayData',
+   'reports','alerts','messages','ardoise'].forEach(k => {
+    if (p[k] !== undefined) state[k] = p[k];
+  });
+}
+
+function startRealtimeSync() {
+  if (!window._fb) return;
+  window._fb.listenFirebase(function(data) {
+    if (!data) return;
+    mergeState(data);
+    // Save to localStorage as cache
+    try { localStorage.setItem('pomsky_v2', JSON.stringify(state)); } catch(e) {}
+    // Refresh UI if screens are active
+    const adminActive = document.getElementById('screen-admin').classList.contains('active');
+    const workerActive = document.getElementById('screen-worker').classList.contains('active');
+    if (adminActive) {
+      renderAdminLive();
+      renderAdminMessages();
+      renderArdoise('admin');
+      renderReports();
+    }
+    if (workerActive) {
+      renderLilouMessages();
+      renderArdoise('worker');
+    }
+  });
+}
+
+// ── UTILS ──
+function todayStr() { return new Date().toISOString().slice(0,10); }
+function formatDate(d) { return new Date(d).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}); }
+function formatTime(d) { if(!d) return '—'; return new Date(d).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
+function showToast(msg, dur=2500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function toggleZone(bodyId, header) {
+  const b = document.getElementById(bodyId);
+  const c = header ? header.querySelector('.zone-chevron') : null;
+  if (b) b.classList.toggle('collapsed');
+  if (c) c.classList.toggle('open');
+}
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+}
+
+// ── DETERMINE VACATION ──
+function detectVacation() {
+  const today = todayStr();
+  if (!state.dayData[today]) state.dayData[today] = {};
+  const dd = state.dayData[today];
+  // If matin not started or not closed → matin
+  if (!dd.matin || !dd.matin.closed) return 'matin';
+  // If matin closed and soir not started/closed → soir
+  if (dd.matin.closed && (!dd.soir || !dd.soir.closed)) return 'soir';
+  return 'done'; // both closed
+}
+
+function getTodayDay() {
+  const today = todayStr();
+  if (!state.dayData[today]) state.dayData[today] = {};
+  return state.dayData[today];
+}
+
+// ── AUTH ──
+function doLogin() {
+  const errEl = document.getElementById('login-error');
+  const sel = document.getElementById('login-user').value;
+  const pin = document.getElementById('login-pin').value.trim();
+  function showErr(m) { errEl.textContent = m; errEl.style.display = 'block'; }
+  errEl.style.display = 'none';
+  if (!sel) { showErr('Sélectionnez un compte.'); return; }
+  const acc = state.accounts.find(a => a.id === sel);
+  if (!acc) { showErr('Compte introuvable.'); return; }
+  if (acc.pin !== pin) { showErr('PIN incorrect. (Démo : 1234)'); return; }
+  state.currentUser = acc;
+  if (acc.role === 'admin') { showScreen('admin'); initAdmin(); startRealtimeSync(); }
+  else { startWorkerSession(); startRealtimeSync(); }
+}
+
+function doLogout() {
+  state.currentUser = null;
+  state.sessionVacation = null;
+  state.sessionStart = null;
+  state.taskStatus = {};
+  state.remarkLevels = {};
+  state.remarkTexts = {};
+  state.pendingTaskId = null;
+  document.getElementById('login-pin').value = '';
+  document.getElementById('login-user').value = '';
+  showScreen('login');
+}
+
+// ── WORKER SESSION START ──
+function startWorkerSession() {
+  const vacation = detectVacation();
+  if (vacation === 'done') {
+    showScreen('worker');
+    document.getElementById('zones-container').innerHTML =
+      '<div style="text-align:center;padding:2rem;color:var(--muted)"><p style="font-size:2rem">✅</p><p>Les deux vacations du jour sont clôturées.<br>À demain !</p></div>';
+    document.getElementById('fin-service-section').style.display = 'none';
+    document.getElementById('btn-alerte-bebe').style.display = 'none';
+    document.getElementById('worker-date').textContent = formatDate(new Date());
+    document.getElementById('worker-badge-vacation').textContent = state.currentUser.name;
+    return;
+  }
+  state.sessionVacation = vacation;
+  state.sessionStart = new Date().toISOString();
+  // Init vacation data
+  const dd = getTodayDay();
+  if (!dd[vacation]) dd[vacation] = { taskStatus:{}, remarkLevels:{}, remarkTexts:{}, start: state.sessionStart, closed: false };
+  // Load existing progress
+  state.taskStatus   = { ...dd[vacation].taskStatus };
+  state.remarkLevels = { ...dd[vacation].remarkLevels };
+  state.remarkTexts  = { ...dd[vacation].remarkTexts };
+  saveState();
+  showScreen('worker');
+  initWorker();
+}
+
+// ── WORKER UI ──
+function initWorker() {
+  const u = state.currentUser;
+  const vac = state.sessionVacation;
+  const vacLabel = vac === 'matin' ? '☀️ Matin' : '🌙 Soir';
+  document.getElementById('worker-badge-vacation').textContent = u.name + ' · ' + vacLabel;
+  document.getElementById('worker-date').textContent = formatDate(new Date());
+  document.getElementById('vacation-label-top').textContent = 'Vacation ' + vacLabel;
+  document.getElementById('session-start-display').textContent = formatTime(state.sessionStart);
+  // Show releve status if soir
+  const dd = getTodayDay();
+  if (vac === 'soir' && dd.matin) {
+    const rs = document.getElementById('releve-status');
+    const rt = document.getElementById('releve-status-text');
+    rs.style.display = 'block';
+    const mat = dd.matin;
+    const done = Object.values(mat.taskStatus||{}).filter(t=>t.done).length;
+    const tasks = state.tasksMatin.length;
+    rt.textContent = `Matin clôturé par ${mat.worker||'l\'équipe'} à ${formatTime(mat.end)} — ${done}/${tasks} tâches effectuées.`;
+  }
+  renderLilouMessages();
+  renderWorkerZones();
+}
+
+function getActiveTasks() {
+  const vac = state.sessionVacation;
+  const baseTasks = vac === 'matin' ? JSON.parse(JSON.stringify(state.tasksMatin)) : JSON.parse(JSON.stringify(state.tasksSoir));
+  const today = todayStr();
+  const activePeriodics = state.periodics.filter(p => p.vacation === vac && p.startDate <= today && p.endDate >= today);
+  activePeriodics.forEach(p => {
+    const insertAfter = parseInt(p.afterNum) || 0;
+    const idx = baseTasks.findIndex(t => t.num === insertAfter);
+    const newTask = { id:'p_'+p.id, zone:p.zone, num:insertAfter+0.5, label:'⭐ '+p.label+' (périodique)', periodic:true };
+    baseTasks.splice(idx+1, 0, newTask);
+  });
+  baseTasks.forEach((t,i) => t.displayNum = i+1);
+  return baseTasks;
+}
+
+function renderWorkerZones() {
+  const tasks = getActiveTasks();
+  const container = document.getElementById('zones-container');
+  container.innerHTML = '';
+  const currentIdx = tasks.findIndex(t => !state.taskStatus[t.id]?.done);
+
+  // Group by zone
+  ['nurserie2','nurserie1','parc'].forEach(zoneKey => {
+    const zoneTasks = tasks.filter(t => t.zone === zoneKey);
+    if (!zoneTasks.length) return;
+    const meta = ZONES_META[zoneKey];
+    const done = zoneTasks.filter(t => state.taskStatus[t.id]?.done).length;
+    const card = document.createElement('div');
+    card.className = 'zone-card';
+    const bodyId = 'zb-'+zoneKey;
+    card.innerHTML = `
+      <div class="zone-header ${meta.cls}" onclick="toggleZone('${bodyId}',this)">
+        <div class="zone-title"><span style="font-size:1.2rem">${meta.icon}</span><h2>${meta.label}</h2></div>
+        <div class="zone-progress"><span class="zone-count">${done}/${zoneTasks.length}</span><span class="zone-chevron open">▾</span></div>
+      </div>
+      <div class="zone-body" id="${bodyId}">
+        ${zoneTasks.map(t => {
+          const gi = tasks.findIndex(x => x.id === t.id);
+          const isDone = !!state.taskStatus[t.id]?.done;
+          const isCurrent = gi === currentIdx;
+          const isLocked = !isDone && gi > currentIdx;
+          const cls = isDone ? 'done' : isCurrent ? 'current' : isLocked ? 'locked' : '';
+          const timeStr = state.taskStatus[t.id]?.time || '';
+          return `<div class="task-item ${cls}" id="task-item-${t.id}">
+            <span class="task-num">${t.displayNum}</span>
+            <div class="task-check" onclick="clickTask('${t.id}',${isCurrent},${isDone})">${isDone?'✓':''}</div>
+            <span class="task-label">${t.label}</span>
+            ${timeStr?`<span class="task-time">${timeStr}</span>`:''}
+          </div>`;
+        }).join('')}
+      </div>`;
+    container.appendChild(card);
+  });
+
+  // Remarks operator
+  container.appendChild(buildRemarksCard('Remarques opérateurs','remarks','📝',REMARK_OPERATOR,true));
+  // Remarks éleveur
+  container.appendChild(buildRemarksCard('Remarques éleveur','eleveur','🌸',REMARK_ELEVEUR,false));
+  // Ardoise
+  container.appendChild(buildArdoisWorkerCard());
+
+  updateProgress(tasks);
+  checkFinService(tasks);
+}
+
+function buildRemarksCard(title, cls, icon, remarks) {
+  const card = document.createElement('div');
+  card.className = 'zone-card';
+  const uid = cls+'_'+Math.random().toString(36).slice(2,6);
+  card.innerHTML = `
+    <div class="zone-header ${cls}" onclick="toggleZone('${uid}',this)">
+      <div class="zone-title"><span style="font-size:1.2rem">${icon}</span><h2>${title}</h2></div>
+      <span class="zone-chevron open">▾</span>
+    </div>
+    <div class="zone-body" id="${uid}">
+      ${remarks.map(r=>`
+        <div class="remark-item">
+          <div class="remark-label">${r.label}</div>
+          ${r.type==='level'?`<div class="remark-levels">${LEVELS.map(l=>`<button class="level-btn ${state.remarkLevels[r.id]===l?'selected':''}" data-level="${l}" onclick="selectLevel('${r.id}','${l}',this)">${l}</button>`).join('')}</div>`:''}
+          <textarea class="remark-text" placeholder="Commentaire..." onchange="saveRemarkText('${r.id}',this.value)">${state.remarkTexts[r.id]||''}</textarea>
+        </div>`).join('')}
+    </div>`;
+  return card;
+}
+
+function buildArdoisWorkerCard() {
+  const card = document.createElement('div');
+  card.className = 'zone-card';
+  card.innerHTML = `
+    <div class="zone-header ardoise" onclick="toggleZone('ardoise-w-body',this)">
+      <div class="zone-title"><span style="font-size:1.2rem">📝</span><h2>Ardoise de l'équipe</h2></div>
+      <span class="zone-chevron open">▾</span>
+    </div>
+    <div class="zone-body" id="ardoise-w-body">
+      <div class="ardoise-messages" id="ardoise-msgs-worker"></div>
+      <div class="ardoise-input-row">
+        <input class="ardoise-input" id="ardoise-input-worker" placeholder="Écrire un message..." maxlength="300">
+        <button class="btn btn-ok btn-sm" id="btn-ardoise-worker">Envoyer</button>
+      </div>
+    </div>`;
+  // Wire after insert
+  setTimeout(() => {
+    const btn = document.getElementById('btn-ardoise-worker');
+    if (btn) btn.addEventListener('click', () => sendArdoise('worker'));
+    const inp = document.getElementById('ardoise-input-worker');
+    if (inp) inp.addEventListener('keydown', e => { if(e.key==='Enter') sendArdoise('worker'); });
+    renderArdoise('worker');
+  }, 50);
+  return card;
+}
+
+function clickTask(taskId, isCurrent, isDone) {
+  if (isDone) return;
+  if (!isCurrent) { showToast('Terminez d\'abord les tâches précédentes'); return; }
+  state.pendingTaskId = taskId;
+  const task = getActiveTasks().find(t => String(t.id) === String(taskId));
+  document.getElementById('modal-task-body').textContent = task ? task.label : '';
+  openModal('modal-task');
+}
+
+function confirmTask() {
+  if (!state.pendingTaskId) return;
+  const now = new Date().toISOString();
+  state.taskStatus[state.pendingTaskId] = { done:true, time:formatTime(now) };
+  // Persist to dayData
+  const vac = state.sessionVacation;
+  const dd = getTodayDay();
+  if (dd[vac]) dd[vac].taskStatus = { ...state.taskStatus };
+  closeModal('modal-task');
+  saveState();
+  renderWorkerZones();
+  if (Object.values(state.remarkLevels).some(l => l==='Urgent')) {
+    state.alerts.push({time:formatTime(new Date()),type:'Remarque URGENTE',user:state.currentUser.name});
+    saveState(); showToast('⚠️ Alerte URGENT notifiée');
+  }
+  setTimeout(scrollToCurrentTask, 100);
+}
+
+function scrollToCurrentTask() {
+  const tasks = getActiveTasks();
+  const next = tasks.find(t => !state.taskStatus[t.id]?.done);
+  if (!next) return;
+  const el = document.getElementById('task-item-'+next.id);
+  if (!el) return;
+  el.scrollIntoView({behavior:'smooth', block:'center'});
+  el.classList.add('just-current');
+  setTimeout(() => el.classList.remove('just-current'), 1400);
+}
+
+function selectLevel(remarkId, level, btn) {
+  state.remarkLevels[remarkId] = level;
+  btn.closest('.remark-levels').querySelectorAll('.level-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  const dd = getTodayDay();
+  const vac = state.sessionVacation;
+  if (dd[vac]) dd[vac].remarkLevels = {...state.remarkLevels};
+  saveState();
+  if (level==='Urgent') {
+    state.alerts.push({time:formatTime(new Date()),type:'Remarque URGENTE: '+remarkId,user:state.currentUser?.name});
+    saveState(); showToast('⚠️ Alerte URGENT notifiée à l\'éleveur');
+  }
+}
+
+function saveRemarkText(id, val) {
+  state.remarkTexts[id] = val;
+  const dd = getTodayDay();
+  const vac = state.sessionVacation;
+  if (dd[vac]) dd[vac].remarkTexts = {...state.remarkTexts};
+  saveState();
+}
+
+function updateProgress(tasks) {
+  const total = tasks.length;
+  const done  = tasks.filter(t => state.taskStatus[t.id]?.done).length;
+  const pct   = total ? Math.round(done/total*100) : 0;
+  document.getElementById('global-pct').textContent = pct+'%';
+  document.getElementById('global-bar').style.width = pct+'%';
+  document.getElementById('session-done-count').textContent = done+' / '+total;
+}
+
+function checkFinService(tasks) {
+  const allDone = tasks.every(t => state.taskStatus[t.id]?.done);
+  const sec = document.getElementById('fin-service-section');
+  if (allDone) {
+    sec.style.display = 'block';
+    const vac = state.sessionVacation;
+    document.getElementById('fin-service-title').textContent = vac==='matin' ? '☀️ Fin de vacation — Matin' : '🌙 Fin de vacation — Soir';
+    document.getElementById('fin-service-text').textContent = vac==='matin'
+      ? 'Toutes les tâches du matin sont faites. Clôturez pour permettre la relève de l\'après-midi.'
+      : 'Toutes les tâches du soir sont faites. Clôturez pour finaliser la journée.';
+  } else {
+    sec.style.display = 'none';
+  }
+}
+
+function finService() {
+  openModal('modal-fin-service');
+  const vac = state.sessionVacation;
+  document.getElementById('modal-fin-title').textContent = vac==='matin' ? '☀️ Clôturer la vacation Matin' : '🌙 Clôturer la vacation Soir';
+  document.getElementById('modal-fin-body').textContent = vac==='matin'
+    ? 'Confirmez la fin de votre service du matin. L\'ouvrier du soir pourra prendre la relève.'
+    : 'Confirmez la fin de votre service du soir. Le rapport consolidé sera envoyé à Lilou.';
+}
+
+function confirmFinService() {
+  closeModal('modal-fin-service');
+  const vac = state.sessionVacation;
+  const dd  = getTodayDay();
+  const now = new Date().toISOString();
+  dd[vac].closed = true;
+  dd[vac].end    = now;
+  dd[vac].worker = state.currentUser.name;
+  dd[vac].taskStatus   = {...state.taskStatus};
+  dd[vac].remarkLevels = {...state.remarkLevels};
+  dd[vac].remarkTexts  = {...state.remarkTexts};
+  saveState();
+  // If soir → generate consolidated report
+  if (vac === 'soir') generateReport();
+  else showToast('☀️ Vacation matin clôturée — Bonne relève !');
+  setTimeout(doLogout, 1200);
+}
+
+// ── CONSOLIDATED REPORT ──
+function generateReport() {
+  const today = todayStr();
+  const dd = getTodayDay();
+  const matTasks = JSON.parse(JSON.stringify(state.tasksMatin));
+  const soirTasks = JSON.parse(JSON.stringify(state.tasksSoir));
+  matTasks.forEach((t,i) => t.displayNum = i+1);
+  soirTasks.forEach((t,i) => t.displayNum = i+1);
+  const report = {
+    id: Date.now(),
+    date: today,
+    workerMatin: dd.matin?.worker || '—',
+    workerSoir:  dd.soir?.worker  || '—',
+    matinStart:  formatTime(dd.matin?.start),
+    matinEnd:    formatTime(dd.matin?.end),
+    soirStart:   formatTime(dd.soir?.start),
+    soirEnd:     formatTime(dd.soir?.end),
+    tasksMatin: matTasks.map(t => ({
+      num:t.displayNum, label:t.label, zone:t.zone,
+      done: !!(dd.matin?.taskStatus||{})[t.id]?.done,
+      time: (dd.matin?.taskStatus||{})[t.id]?.time || '—',
+    })),
+    tasksSoir: soirTasks.map(t => ({
+      num:t.displayNum, label:t.label, zone:t.zone,
+      done: !!(dd.soir?.taskStatus||{})[t.id]?.done,
+      time: (dd.soir?.taskStatus||{})[t.id]?.time || '—',
+    })),
+    remarksMatin: { levels: dd.matin?.remarkLevels||{}, texts: dd.matin?.remarkTexts||{} },
+    remarksSoir:  { levels: dd.soir?.remarkLevels||{},  texts: dd.soir?.remarkTexts||{} },
+    alerts: [...state.alerts],
+  };
+  state.reports.unshift(report);
+  if (state.reports.length > 90) state.reports = state.reports.slice(0,90);
+  saveState();
+  showToast('📋 Rapport consolidé envoyé à Lilou !');
+}
+
+// ── ALERTE BÉBÉ ──
+function alerteBebe() { openModal('modal-alerte'); }
+function confirmerAlerte() {
+  closeModal('modal-alerte');
+  state.alerts.push({time:formatTime(new Date()), type:'🚨 ALERTE BÉBÉ', user:state.currentUser?.name});
+  saveState();
+  openModal('modal-alerte-sent');
+}
+
+// ── LILOU MESSAGES (worker view) ──
+function renderLilouMessages() {
+  const today = todayStr();
+  const msgs = (state.messages||[]).filter(m => m.date===today);
+  const banner  = document.getElementById('lilou-messages-banner');
+  const content = document.getElementById('lilou-messages-content');
+  if (!banner||!content) return;
+  if (!msgs.length) { banner.style.display='none'; return; }
+  banner.style.display='block';
+  const lbl = {chiots:'🐶 Chiots', chiens:'🐕 Chiens', info:'ℹ️ Info'};
+  content.innerHTML = msgs.map(m=>`
+    <div class="lilou-msg-item">
+      <div class="lilou-msg-meta">${lbl[m.type]||m.type} · ${m.time}</div>
+      <div>${m.body}</div>
+    </div>`).join('');
+}
+
+// ── ARDOISE ──
+function sendArdoise(context) {
+  const inputId = context==='worker' ? 'ardoise-input-worker' : 'ardoise-input-admin';
+  const inp = document.getElementById(inputId);
+  if (!inp || !inp.value.trim()) return;
+  const msg = {
+    id: Date.now().toString(),
+    author: state.currentUser.name,
+    role: state.currentUser.role,
+    text: inp.value.trim(),
+    time: formatTime(new Date()),
+    date: todayStr(),
+  };
+  if (!state.ardoise) state.ardoise = [];
+  state.ardoise.push(msg);
+  inp.value = '';
+  saveState();
+  renderArdoise(context);
+  if (context==='admin') renderArdoise('admin');
+}
+
+function renderArdoise(context) {
+  const msgsId = context==='worker' ? 'ardoise-msgs-worker' : 'ardoise-msgs-admin';
+  const container = document.getElementById(msgsId);
+  if (!container) return;
+  const msgs = (state.ardoise||[]);
+  if (!msgs.length) {
+    container.innerHTML='<p style="color:var(--muted);font-size:.82rem;text-align:center;padding:.5rem">L\'ardoise est vide.</p>';
+    return;
+  }
+  const me = state.currentUser?.name;
+  container.innerHTML = msgs.map(m => {
+    const isMine = m.author === me;
+    const isLilou = m.role === 'admin';
+    const cls = isMine ? 'mine' : isLilou ? 'lilou' : 'other';
+    return `<div class="ardoise-msg ${cls}">
+      <div class="ardoise-meta">${m.author} · ${m.time}</div>
+      <div>${m.text}</div>
+    </div>`;
+  }).join('');
+  container.scrollTop = container.scrollHeight;
+}
+
+// ── ADMIN ──
+function initAdmin() {
+  document.getElementById('admin-date').textContent = formatDate(new Date());
+  renderAdminLive();
+  renderAdminMessages();
+  renderArdoise('admin');
+  renderTaskManager('matin');
+  renderPeriodics();
+  renderReports();
+  renderAccounts();
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.admin-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('#admin-bottom-nav button').forEach(b => b.classList.remove('active'));
+  const panel = document.getElementById('panel-'+name);
+  if (panel) panel.classList.add('active');
+  const btn = document.getElementById('nav-'+name);
+  if (btn) btn.classList.add('active');
+  if (name==='ardoise') setTimeout(()=>renderArdoise('admin'),50);
+}
+
+function renderAdminLive() {
+  const container = document.getElementById('admin-live-zones');
+  container.innerHTML = '<h3 style="margin-bottom:.8rem">📡 État en temps réel</h3>';
+  const today = todayStr();
+  const dd = state.dayData[today] || {};
+  ['matin','soir'].forEach(vac => {
+    const v = dd[vac];
+    const tasks = vac==='matin' ? state.tasksMatin : state.tasksSoir;
+    if (!v) {
+      container.innerHTML += `<div style="background:var(--parchment);border:1.5px solid var(--border);border-radius:var(--radius);padding:.9rem 1.1rem;margin-bottom:.7rem">
+        <span class="vacation-label ${vac}">${vac==='matin'?'☀️ Matin':'🌙 Soir'}</span>
+        <p style="color:var(--muted);font-size:.85rem;margin-top:.3rem">En attente de début de service.</p></div>`;
+      return;
+    }
+    const done = Object.values(v.taskStatus||{}).filter(t=>t.done).length;
+    const pct  = tasks.length ? Math.round(done/tasks.length*100) : 0;
+    container.innerHTML += `
+      <div class="report-card" style="margin-bottom:.7rem">
+        <div class="report-card-header">
+          <div><span class="vacation-label ${vac}">${vac==='matin'?'☀️ Matin':'🌙 Soir'}</span>
+          <strong style="display:block;margin-top:.2rem">👷 ${v.worker||'En cours'}</strong></div>
+          <div style="text-align:right;font-size:.78rem;color:var(--muted)">${formatTime(v.start)}${v.end?' → '+formatTime(v.end):''}<br>${v.closed?'<span style="color:var(--ok);font-weight:700">✓ Clôturé</span>':'<span style="color:var(--warn)">En cours…</span>'}</div>
+        </div>
+        <div class="report-card-body">
+          <div class="progress-label" style="margin-bottom:.3rem"><span>${done}/${tasks.length} tâches</span><span>${pct}%</span></div>
+          <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
+        </div>
+      </div>`;
+  });
+  const alertList = document.getElementById('admin-alerts-list');
+  if (alertList && state.alerts.length) {
+    alertList.innerHTML = state.alerts.map(a=>
+      `<div style="background:#fff0f0;border:1.5px solid #f5c6cb;border-radius:8px;padding:.5rem .9rem;margin-bottom:.4rem;font-size:.83rem">
+        <strong style="color:var(--alert)">${a.type}</strong>
+        <span style="color:var(--muted);margin-left:.5rem">${a.time} — ${a.user}</span></div>`
+    ).join('');
+  }
+}
+
+function publishMessage() {
+  const type = document.getElementById('msg-type').value;
+  const body = document.getElementById('msg-body').value.trim();
+  if (!body) { showToast('Rédigez un message'); return; }
+  if (!state.messages) state.messages = [];
+  state.messages.unshift({id:Date.now().toString(), type, body, author:state.currentUser.name, time:formatTime(new Date()), date:todayStr()});
+  document.getElementById('msg-body').value = '';
+  saveState(); renderAdminMessages(); showToast('✅ Message publié');
+}
+
+function deleteMessage(id) {
+  state.messages = (state.messages||[]).filter(m => m.id!==id);
+  saveState(); renderAdminMessages();
+}
+
+function renderAdminMessages() {
+  const list = document.getElementById('admin-messages-list');
+  if (!list) return;
+  if (!(state.messages||[]).length) { list.innerHTML='<p style="color:var(--muted);font-size:.85rem">Aucun message.</p>'; return; }
+  const lbl = {chiots:'🐶 Mouvement chiots', chiens:'🐕 Mouvement chiens', info:'ℹ️ Info'};
+  list.innerHTML = state.messages.map(m=>`
+    <div class="msg-item">
+      <div><div style="font-size:.72rem;color:var(--muted);margin-bottom:.2rem">${lbl[m.type]||m.type} · ${m.date} ${m.time}</div>
+      <div class="msg-item-body">${m.body}</div></div>
+      <button class="btn btn-danger btn-sm" onclick="deleteMessage('${m.id}')">✕</button>
+    </div>`).join('');
+}
+
+// ── TASK MANAGER ──
+let currentFilterVac = 'matin';
+function renderTaskManager(vac) {
+  currentFilterVac = vac || currentFilterVac;
+  document.querySelectorAll('.vacation-filter-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.vac === currentFilterVac);
+    b.style.background = b.dataset.vac === currentFilterVac ? 'var(--forest)' : '';
+    b.style.color = b.dataset.vac === currentFilterVac ? 'white' : '';
+  });
+  const tasks = currentFilterVac==='matin' ? state.tasksMatin : state.tasksSoir;
+  const list = document.getElementById('task-manager-list');
+  list.innerHTML = tasks.map(t=>`
+    <div class="task-manager-item">
+      <span style="color:var(--muted);cursor:grab">⠿</span>
+      <span style="font-family:'DM Mono',monospace;font-size:.7rem;color:var(--muted);min-width:18px">${t.num}</span>
+      <input type="text" value="${t.label}" onchange="updateTaskLabel(${t.id},'${currentFilterVac}',this.value)">
+      <select class="zone-select" onchange="updateTaskZone(${t.id},'${currentFilterVac}',this.value)">
+        <option value="nurserie2" ${t.zone==='nurserie2'?'selected':''}>N2</option>
+        <option value="nurserie1" ${t.zone==='nurserie1'?'selected':''}>N1</option>
+        <option value="parc"      ${t.zone==='parc'?'selected':''}>Parc</option>
+      </select>
+      <button class="btn btn-danger btn-sm" onclick="deleteTask(${t.id},'${currentFilterVac}')">✕</button>
+    </div>`).join('');
+}
+
+function updateTaskLabel(id, vac, val) {
+  const arr = vac==='matin' ? state.tasksMatin : state.tasksSoir;
+  const t = arr.find(t => t.id===id); if(t) t.label=val;
+}
+function updateTaskZone(id, vac, val) {
+  const arr = vac==='matin' ? state.tasksMatin : state.tasksSoir;
+  const t = arr.find(t => t.id===id); if(t) t.zone=val;
+}
+function deleteTask(id, vac) {
+  if(vac==='matin') state.tasksMatin = state.tasksMatin.filter(t=>t.id!==id);
+  else state.tasksSoir = state.tasksSoir.filter(t=>t.id!==id);
+  renderTaskManager();
+}
+function addNewTask() {
+  const arr = currentFilterVac==='matin' ? state.tasksMatin : state.tasksSoir;
+  const maxNum = arr.length ? Math.max(...arr.map(t=>t.num)) : 0;
+  const newId = (currentFilterVac==='matin' ? 1 : 101) + maxNum;
+  arr.push({id:newId, zone:'nurserie2', num:maxNum+1, label:'Nouvelle tâche'});
+  renderTaskManager();
+}
+function saveTasks() { saveState(); showToast('✅ Tâches sauvegardées'); }
+
+function renderPeriodics() {
+  const list = document.getElementById('periodic-list');
+  if (!state.periodics.length) { list.innerHTML='<p style="color:var(--muted);font-size:.85rem">Aucune tâche périodique.</p>'; return; }
+  const zl={nurserie2:'N2',nurserie1:'N1',parc:'Parc'};
+  const vl={matin:'☀️ Matin',soir:'🌙 Soir'};
+  list.innerHTML = state.periodics.map(p=>`
+    <div class="periodic-item">
+      <div class="periodic-label">${p.label}</div>
+      <div class="periodic-meta">${zl[p.zone]||p.zone} · ${vl[p.vacation]||p.vacation} · Après n°${p.afterNum} · ${p.startDate} → ${p.endDate}</div>
+      <button class="btn btn-danger btn-sm" style="margin-top:.4rem" onclick="deletePeriodic('${p.id}')">Supprimer</button>
+    </div>`).join('');
+}
+
+function addPeriodic() {
+  const label = document.getElementById('pt-label').value.trim();
+  const zone  = document.getElementById('pt-zone').value;
+  const vac   = document.getElementById('pt-vac').value;
+  const after = document.getElementById('pt-after').value;
+  const start = document.getElementById('pt-start').value;
+  const end   = document.getElementById('pt-end').value;
+  if (!label||!after||!start||!end) { showToast('Remplissez tous les champs'); return; }
+  state.periodics.push({id:Date.now().toString(), label, zone, vacation:vac, afterNum:parseInt(after), startDate:start, endDate:end});
+  saveState(); renderPeriodics(); showToast('✅ Tâche périodique ajoutée');
+}
+function deletePeriodic(id) {
+  state.periodics = state.periodics.filter(p=>p.id!==id);
+  saveState(); renderPeriodics();
+}
+
+function renderReports() {
+  const list = document.getElementById('reports-list');
+  if (!state.reports.length) { list.innerHTML='<p style="color:var(--muted);font-size:.85rem">Aucun rapport.</p>'; return; }
+  list.innerHTML = state.reports.map(r => {
+    const matDone = r.tasksMatin.filter(t=>t.done).length;
+    const soirDone = r.tasksSoir.filter(t=>t.done).length;
+    const matRows = r.tasksMatin.map(t=>`<tr><td>${t.num}</td><td>${t.label}</td><td style="color:${t.done?'var(--ok)':'var(--alert)'}">${t.done?'✓':'✗'}</td><td style="font-family:'DM Mono',monospace">${t.time}</td></tr>`).join('');
+    const soirRows = r.tasksSoir.map(t=>`<tr><td>${t.num}</td><td>${t.label}</td><td style="color:${t.done?'var(--ok)':'var(--alert)'}">${t.done?'✓':'✗'}</td><td style="font-family:'DM Mono',monospace">${t.time}</td></tr>`).join('');
+    return `<div class="report-card">
+      <div class="report-card-header">
+        <strong>📋 ${r.date}</strong>
+        <span style="font-size:.78rem;color:var(--muted)">${matDone}+${soirDone} tâches</span>
+      </div>
+      <div class="report-card-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem;margin-bottom:.6rem;font-size:.78rem">
+          <div><span class="vacation-label matin">☀️ Matin</span><br>${r.workerMatin}<br>${r.matinStart} → ${r.matinEnd}</div>
+          <div><span class="vacation-label soir">🌙 Soir</span><br>${r.workerSoir}<br>${r.soirStart} → ${r.soirEnd}</div>
+        </div>
+        <h3 style="margin-bottom:.4rem">Simogramme Matin</h3>
+        <div class="simo-wrap"><table class="simo-table"><thead><tr><th>#</th><th>Tâche</th><th>Fait</th><th>Heure</th></tr></thead><tbody>${matRows}</tbody></table></div>
+        <h3 style="margin:.7rem 0 .4rem">Simogramme Soir</h3>
+        <div class="simo-wrap"><table class="simo-table"><thead><tr><th>#</th><th>Tâche</th><th>Fait</th><th>Heure</th></tr></thead><tbody>${soirRows}</tbody></table></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderAccounts() {
+  const list = document.getElementById('accounts-list');
+  list.innerHTML = state.accounts.map(a=>`
+    <div class="account-card">
+      <div class="account-avatar ${a.role==='admin'?'admin':''}">${a.name[0]}</div>
+      <div class="account-info"><strong>${a.name}</strong><span>PIN : ${'•'.repeat(a.pin.length)}</span></div>
+      <span class="account-badge ${a.role}">${a.role==='admin'?'Éleveur':'Ouvrier'}</span>
+      ${a.id!=='lilou'?`<button class="btn btn-danger btn-sm" onclick="resetPin('${a.id}')">Reset PIN</button>`:''}
+    </div>`).join('');
+}
+
+function addAccount() {
+  const name = document.getElementById('new-name').value.trim();
+  const role = document.getElementById('new-role').value;
+  const pin  = document.getElementById('new-pin').value.trim();
+  if (!name||pin.length<4) { showToast('Remplissez tous les champs (PIN 4 chiffres)'); return; }
+  const id = name.toLowerCase().replace(/\s+/g,'_')+'_'+Date.now();
+  state.accounts.push({id,name,role,pin});
+  saveState(); renderAccounts(); showToast('✅ Compte créé');
+}
+
+function resetPin(userId) {
+  const newPin = prompt('Nouveau PIN (4 chiffres) :');
+  if (!newPin||newPin.length!==4||isNaN(newPin)) { showToast('PIN invalide'); return; }
+  const acc = state.accounts.find(a=>a.id===userId);
+  if (acc) { acc.pin=newPin; saveState(); showToast('✅ PIN mis à jour'); renderAccounts(); }
+}
+
+// ══════════════════════════════════════════
+// WIRE EVENTS
+// ══════════════════════════════════════════
+(function init() {
+  loadState();
+
+  // Login
+  document.getElementById('btn-login').addEventListener('click', doLogin);
+  document.getElementById('login-pin').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+
+  // Logout
+  document.getElementById('btn-logout-worker').addEventListener('click', doLogout);
+  document.getElementById('btn-logout-admin').addEventListener('click', doLogout);
+
+  // Alerte bébé
+  document.getElementById('btn-alerte-bebe').addEventListener('click', alerteBebe);
+  document.getElementById('btn-confirm-alerte').addEventListener('click', confirmerAlerte);
+
+  // Task confirm
+  document.getElementById('btn-confirm-task').addEventListener('click', confirmTask);
+
+  // Fin de service
+  document.getElementById('btn-fin-service').addEventListener('click', finService);
+  document.getElementById('btn-confirm-fin').addEventListener('click', confirmFinService);
+
+  // Admin messages
+  document.getElementById('btn-publish-msg').addEventListener('click', publishMessage);
+
+  // Ardoise admin
+  document.getElementById('btn-ardoise-admin').addEventListener('click', () => sendArdoise('admin'));
+  document.getElementById('ardoise-input-admin').addEventListener('keydown', e => { if(e.key==='Enter') sendArdoise('admin'); });
+
+  // Admin nav
+  document.querySelectorAll('#admin-bottom-nav button').forEach(btn => {
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  });
+
+  // Task manager filters
+  document.getElementById('filter-matin').addEventListener('click', () => renderTaskManager('matin'));
+  document.getElementById('filter-soir').addEventListener('click',  () => renderTaskManager('soir'));
+  document.getElementById('btn-add-task').addEventListener('click', addNewTask);
+  document.getElementById('btn-save-tasks').addEventListener('click', saveTasks);
+  document.getElementById('btn-add-periodic').addEventListener('click', addPeriodic);
+  document.getElementById('btn-add-account').addEventListener('click', addAccount);
+
+  // Close modals via data-close
+  document.querySelectorAll('[data-close]').forEach(btn => {
+    btn.addEventListener('click', () => closeModal(btn.dataset.close));
+  });
+})();
+</script>
+</body>
+</html>
