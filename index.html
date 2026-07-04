@@ -31,6 +31,7 @@
       saveToFirebase: function(stateObj) {
         try {
           const safeState = JSON.parse(JSON.stringify(stateObj));
+          // Keep accounts so all devices get updates
           delete safeState.currentUser;
           delete safeState.sessionVacation;
           delete safeState.sessionStart;
@@ -381,6 +382,12 @@ h3{font-size:.85rem;font-weight:600;letter-spacing:.06em;text-transform:uppercas
       <div class="progress-bar-bg"><div class="progress-bar-fill" id="global-bar" style="width:0%"></div></div>
     </div>
 
+    <!-- Alert responses from Lilou -->
+    <div id="alert-responses-banner" style="display:none;background:#edf7f0;border:1.5px solid #b8dfc5;border-radius:var(--radius);padding:.8rem 1rem;margin-bottom:.8rem">
+      <h3 style="color:var(--ok);margin-bottom:.4rem;font-size:.75rem">RETOURS DE L'ÉLEVEUR SUR VOS ALERTES</h3>
+      <div id="alert-responses-content"></div>
+    </div>
+
     <!-- Lilou messages -->
     <div id="lilou-messages-banner" style="display:none" class="lilou-messages">
       <h3>🌸 Messages de Lilou</h3>
@@ -523,6 +530,15 @@ h3{font-size:.85rem;font-weight:600;letter-spacing:.06em;text-transform:uppercas
           <div class="form-group"><label>PIN</label><input type="password" id="new-pin" maxlength="4" placeholder="••••" inputmode="numeric"></div>
         </div>
         <button class="btn btn-ok btn-sm" style="margin-top:.7rem" id="btn-add-account">Créer le compte</button>
+      </div>
+      <div style="background:#f0f8ff;border:1.5px solid #aed6f1;border-radius:var(--radius);padding:1rem;margin-top:.8rem">
+        <h3 style="margin-bottom:.7rem;color:#1a5276">🔑 Changer mon PIN (Éleveur)</h3>
+        <div class="inline-form">
+          <div class="form-group"><label>PIN actuel</label><input type="password" id="own-pin-old" maxlength="4" placeholder="••••" inputmode="numeric"></div>
+          <div class="form-group"><label>Nouveau PIN</label><input type="password" id="own-pin-new" maxlength="4" placeholder="••••" inputmode="numeric"></div>
+          <div class="form-group"><label>Confirmer</label><input type="password" id="own-pin-confirm" maxlength="4" placeholder="••••" inputmode="numeric"></div>
+        </div>
+        <button class="btn btn-info btn-sm" style="margin-top:.7rem" id="btn-change-own-pin">Changer mon PIN</button>
       </div>
     </div>
   </div>
@@ -692,8 +708,21 @@ function loadState() {
 function mergeState(p) {
   ['accounts','tasksMatin','tasksSoir','periodics','dayData',
    'reports','alerts','messages','ardoise'].forEach(k => {
-    if (p[k] !== undefined) state[k] = p[k];
+    if (p[k] !== undefined && p[k] !== null) state[k] = p[k];
   });
+  // Ensure taskStatus values are never null
+  if (state.dayData) {
+    Object.keys(state.dayData).forEach(date => {
+      ['matin','soir'].forEach(vac => {
+        const v = state.dayData[date][vac];
+        if (v && v.taskStatus) {
+          Object.keys(v.taskStatus).forEach(k => {
+            if (!v.taskStatus[k]) v.taskStatus[k] = {done:false, time:'—'};
+          });
+        }
+      });
+    });
+  }
 }
 
 function startRealtimeSync() {
@@ -715,8 +744,59 @@ function startRealtimeSync() {
     if (workerActive) {
       renderLilouMessages();
       renderArdoise('worker');
+      // Only re-render zones if no active task pending
+      if (!state.pendingTaskId) renderWorkerZones();
     }
   });
+}
+
+// ── SOUNDS (Web Audio API — no external files needed) ──
+function playSound(type) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (type === 'cloture') {
+      // 3 ascending tones for vacation closure
+      [0, 0.25, 0.5].forEach((t, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = [523, 659, 784][i]; // C5, E5, G5
+        osc.type = 'sine';
+        gain.gain.setValueAtTime(0.4, ctx.currentTime + t);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.4);
+        osc.start(ctx.currentTime + t);
+        osc.stop(ctx.currentTime + t + 0.4);
+      });
+    } else if (type === 'rapport') {
+      // Fanfare for daily report
+      const notes = [523,659,784,1047];
+      const times = [0, 0.2, 0.4, 0.7];
+      notes.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = freq;
+        osc.type = 'triangle';
+        gain.gain.setValueAtTime(0.35, ctx.currentTime + times[i]);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + times[i] + 0.5);
+        osc.start(ctx.currentTime + times[i]);
+        osc.stop(ctx.currentTime + times[i] + 0.5);
+      });
+    } else if (type === 'alerte') {
+      // Urgent alert beeps
+      [0, 0.3, 0.6].forEach(t => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = 880;
+        osc.type = 'square';
+        gain.gain.setValueAtTime(0.3, ctx.currentTime + t);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.2);
+        osc.start(ctx.currentTime + t);
+        osc.stop(ctx.currentTime + t + 0.2);
+      });
+    }
+  } catch(e) { console.warn('Sound error:', e); }
 }
 
 // ── UTILS ──
@@ -815,10 +895,31 @@ function startWorkerSession() {
   initWorker();
 }
 
+// ── ALERT RESPONSES for workers ──
+function showAlertResponses() {
+  // Show alerts that Lilou has marked as Lu or Effectué
+  const responded = (state.alerts||[]).filter(a => a.status === 'lu' || a.status === 'effectué');
+  const banner = document.getElementById('alert-responses-banner');
+  const content = document.getElementById('alert-responses-content');
+  if (!banner || !content || !responded.length) {
+    if (banner) banner.style.display = 'none';
+    return;
+  }
+  banner.style.display = 'block';
+  const statusLabel = {lu:'👁 Lu par Lilou', effectué:'✅ Pris en charge par Lilou'};
+  const statusColor = {lu:'#fff8e6', effectué:'#edf7f0'};
+  content.innerHTML = responded.map(a=>`
+    <div style="background:${statusColor[a.status]};border-radius:6px;padding:.45rem .7rem;margin-bottom:.3rem;font-size:.83rem">
+      <strong>${a.type}</strong> · ${a.time}
+      <span style="float:right;font-weight:700;color:var(--ok)">${statusLabel[a.status]}</span>
+    </div>`).join('');
+}
+
 // ── WORKER UI ──
 function initWorker() {
   const u = state.currentUser;
   const vac = state.sessionVacation;
+  showAlertResponses();
   const vacLabel = vac === 'matin' ? '☀️ Matin' : '🌙 Soir';
   document.getElementById('worker-badge-vacation').textContent = u.name + ' · ' + vacLabel;
   document.getElementById('worker-date').textContent = formatDate(new Date());
@@ -971,7 +1072,7 @@ function confirmTask() {
   saveState();
   renderWorkerZones();
   if (Object.values(state.remarkLevels).some(l => l==='Urgent')) {
-    state.alerts.push({time:formatTime(new Date()),type:'Remarque URGENTE',user:state.currentUser.name});
+    state.alerts.push({id:Date.now().toString(), time:formatTime(new Date()),type:'Remarque URGENTE',user:state.currentUser.name, status:'envoyé'});
     saveState(); showToast('⚠️ Alerte URGENT notifiée');
   }
   setTimeout(scrollToCurrentTask, 100);
@@ -997,7 +1098,7 @@ function selectLevel(remarkId, level, btn) {
   if (dd[vac]) dd[vac].remarkLevels = {...state.remarkLevels};
   saveState();
   if (level==='Urgent') {
-    state.alerts.push({time:formatTime(new Date()),type:'Remarque URGENTE: '+remarkId,user:state.currentUser?.name});
+    state.alerts.push({id:Date.now().toString(), time:formatTime(new Date()),type:'Remarque URGENTE: '+remarkId,user:state.currentUser?.name, status:'envoyé'});
     saveState(); showToast('⚠️ Alerte URGENT notifiée à l\'éleveur');
   }
 }
@@ -1045,6 +1146,7 @@ function finService() {
 
 function confirmFinService() {
   closeModal('modal-fin-service');
+  playSound('cloture');
   const vac = state.sessionVacation;
   const dd  = getTodayDay();
   const now = new Date().toISOString();
@@ -1063,6 +1165,7 @@ function confirmFinService() {
 
 // ── CONSOLIDATED REPORT ──
 function generateReport() {
+  playSound('rapport');
   const today = todayStr();
   const dd = getTodayDay();
   const matTasks = JSON.parse(JSON.stringify(state.tasksMatin));
@@ -1080,13 +1183,13 @@ function generateReport() {
     soirEnd:     formatTime(dd.soir?.end),
     tasksMatin: matTasks.map(t => ({
       num:t.displayNum, label:t.label, zone:t.zone,
-      done: !!(dd.matin?.taskStatus||{})[t.id]?.done,
-      time: (dd.matin?.taskStatus||{})[t.id]?.time || '—',
+      done: !!((dd.matin&&dd.matin.taskStatus)||{})[t.id]?.done,
+      time: ((dd.matin&&dd.matin.taskStatus)||{})[t.id]?.time || '—',
     })),
     tasksSoir: soirTasks.map(t => ({
       num:t.displayNum, label:t.label, zone:t.zone,
-      done: !!(dd.soir?.taskStatus||{})[t.id]?.done,
-      time: (dd.soir?.taskStatus||{})[t.id]?.time || '—',
+      done: !!((dd.soir&&dd.soir.taskStatus)||{})[t.id]?.done,
+      time: ((dd.soir&&dd.soir.taskStatus)||{})[t.id]?.time || '—',
     })),
     remarksMatin: { levels: dd.matin?.remarkLevels||{}, texts: dd.matin?.remarkTexts||{} },
     remarksSoir:  { levels: dd.soir?.remarkLevels||{},  texts: dd.soir?.remarkTexts||{} },
@@ -1102,7 +1205,8 @@ function generateReport() {
 function alerteBebe() { openModal('modal-alerte'); }
 function confirmerAlerte() {
   closeModal('modal-alerte');
-  state.alerts.push({time:formatTime(new Date()), type:'🚨 ALERTE BÉBÉ', user:state.currentUser?.name});
+  playSound('alerte');
+  state.alerts.push({id:Date.now().toString(), time:formatTime(new Date()), type:'🚨 ALERTE BÉBÉ', user:state.currentUser?.name, status:'envoyé'});
   saveState();
   openModal('modal-alerte-sent');
 }
@@ -1203,7 +1307,7 @@ function renderAdminLive() {
         <p style="color:var(--muted);font-size:.85rem;margin-top:.3rem">En attente de début de service.</p></div>`;
       return;
     }
-    const done = Object.values(v.taskStatus||{}).filter(t=>t.done).length;
+    const done = Object.values(v.taskStatus||{}).filter(t=>t&&t.done).length;
     const pct  = tasks.length ? Math.round(done/tasks.length*100) : 0;
     container.innerHTML += `
       <div class="report-card" style="margin-bottom:.7rem">
@@ -1219,12 +1323,37 @@ function renderAdminLive() {
       </div>`;
   });
   const alertList = document.getElementById('admin-alerts-list');
-  if (alertList && state.alerts.length) {
-    alertList.innerHTML = state.alerts.map(a=>
-      `<div style="background:#fff0f0;border:1.5px solid #f5c6cb;border-radius:8px;padding:.5rem .9rem;margin-bottom:.4rem;font-size:.83rem">
-        <strong style="color:var(--alert)">${a.type}</strong>
-        <span style="color:var(--muted);margin-left:.5rem">${a.time} — ${a.user}</span></div>`
-    ).join('');
+  if (alertList) {
+    if (!state.alerts.length) {
+      alertList.innerHTML = '<p style="color:var(--muted);font-size:.85rem">Aucune alerte.</p>';
+    } else {
+      const statusColor = {envoyé:'#fff0f0', lu:'#fff8e6', effectué:'#edf7f0'};
+      const statusBorder = {envoyé:'#f5c6cb', lu:'#f9e79f', effectué:'#b8dfc5'};
+      alertList.innerHTML = state.alerts.map(a=>`
+        <div style="background:${statusColor[a.status]||'#fff0f0'};border:1.5px solid ${statusBorder[a.status]||'#f5c6cb'};border-radius:8px;padding:.6rem .9rem;margin-bottom:.4rem;font-size:.83rem">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.4rem">
+            <div>
+              <strong style="color:var(--alert)">${a.type}</strong>
+              <span style="color:var(--muted);margin-left:.5rem">${a.time} — ${a.user||''}</span>
+            </div>
+            <div style="display:flex;gap:.4rem;align-items:center">
+              <span style="font-size:.72rem;font-weight:700;padding:.15rem .5rem;border-radius:10px;background:${statusBorder[a.status]||'#f5c6cb'};color:var(--text)">${a.status||'envoyé'}</span>
+              ${a.status!=='lu'&&a.status!=='effectué'?`<button class="btn btn-warn btn-sm" onclick="setAlertStatus('${a.id}','lu')">👁 Lu</button>`:''}
+              ${a.status!=='effectué'?`<button class="btn btn-ok btn-sm" onclick="setAlertStatus('${a.id}','effectué')">✅ Effectué</button>`:''}
+            </div>
+          </div>
+        </div>`).join('');
+    }
+  }
+}
+
+function setAlertStatus(id, status) {
+  const alert = state.alerts.find(a=>a.id===id);
+  if (alert) {
+    alert.status = status;
+    saveState();
+    renderAdminLive();
+    showToast(status === 'lu' ? '👁 Alerte marquée comme lue' : '✅ Alerte marquée comme effectuée');
   }
 }
 
@@ -1362,12 +1491,50 @@ function renderReports() {
 function renderAccounts() {
   const list = document.getElementById('accounts-list');
   list.innerHTML = state.accounts.map(a=>`
-    <div class="account-card">
-      <div class="account-avatar ${a.role==='admin'?'admin':''}">${a.name[0]}</div>
-      <div class="account-info"><strong>${a.name}</strong><span>PIN : ${'•'.repeat(a.pin.length)}</span></div>
-      <span class="account-badge ${a.role}">${a.role==='admin'?'Éleveur':'Ouvrier'}</span>
-      ${a.id!=='lilou'?`<button class="btn btn-danger btn-sm" onclick="resetPin('${a.id}')">Reset PIN</button>`:''}
+    <div class="account-card" style="flex-wrap:wrap;gap:.5rem">
+      <div class="account-avatar ${a.role==='admin'?'admin':''}">${a.name[0].toUpperCase()}</div>
+      <div class="account-info" style="min-width:100px">
+        <strong>${a.name}</strong>
+        <span>${a.role==='admin'?'Éleveur':'Ouvrier'} · PIN : ${'•'.repeat(a.pin.length)}</span>
+      </div>
+      <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-left:auto">
+        <button class="btn btn-secondary btn-sm" onclick="renameAccount('${a.id}')">✏️ Renommer</button>
+        ${a.id!=='lilou'?`<button class="btn btn-secondary btn-sm" onclick="resetPin('${a.id}')">🔑 PIN</button>`:''}
+        ${a.id!=='lilou'?`<button class="btn btn-danger btn-sm" onclick="deleteAccount('${a.id}','${a.name}')">🗑️</button>`:''}
+      </div>
     </div>`).join('');
+}
+
+function renameAccount(id) {
+  const acc = state.accounts.find(a=>a.id===id);
+  if (!acc) return;
+  const newName = prompt('Nouveau prénom pour ce compte :', acc.name);
+  if (!newName || !newName.trim()) return;
+  acc.name = newName.trim();
+  saveState(); renderAccounts(); showToast('✅ Compte renommé');
+}
+
+function deleteAccount(id, name) {
+  if (!confirm('Supprimer le compte de ' + name + ' ? Cette action est irréversible.')) return;
+  state.accounts = state.accounts.filter(a=>a.id!==id);
+  saveState(); renderAccounts(); showToast('🗑️ Compte supprimé');
+}
+
+function changeOwnPin() {
+  const oldPin     = document.getElementById('own-pin-old').value.trim();
+  const newPin     = document.getElementById('own-pin-new').value.trim();
+  const confirmPin = document.getElementById('own-pin-confirm').value.trim();
+  const me = state.accounts.find(a=>a.id===state.currentUser.id);
+  if (!me) return;
+  if (me.pin !== oldPin)          { showToast('❌ PIN actuel incorrect'); return; }
+  if (newPin.length !== 4 || isNaN(newPin)) { showToast('❌ Le nouveau PIN doit faire 4 chiffres'); return; }
+  if (newPin !== confirmPin)      { showToast('❌ Les deux nouveaux PIN ne correspondent pas'); return; }
+  me.pin = newPin;
+  state.currentUser.pin = newPin;
+  saveState(); showToast('✅ Votre PIN a été changé');
+  document.getElementById('own-pin-old').value = '';
+  document.getElementById('own-pin-new').value = '';
+  document.getElementById('own-pin-confirm').value = '';
 }
 
 function addAccount() {
@@ -1431,6 +1598,7 @@ function resetPin(userId) {
   document.getElementById('btn-save-tasks').addEventListener('click', saveTasks);
   document.getElementById('btn-add-periodic').addEventListener('click', addPeriodic);
   document.getElementById('btn-add-account').addEventListener('click', addAccount);
+  document.getElementById('btn-change-own-pin').addEventListener('click', changeOwnPin);
 
   // Close modals via data-close
   document.querySelectorAll('[data-close]').forEach(btn => {
