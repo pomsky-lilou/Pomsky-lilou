@@ -309,6 +309,60 @@ h3{font-size:.85rem;font-weight:600;letter-spacing:.06em;text-transform:uppercas
 .inline-form input,.inline-form select{width:100%;padding:.55rem .75rem;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:.85rem;background:var(--cream)}
 
 @media(max-width:480px){.content{padding:.8rem}.topbar{padding:.7rem .9rem}.zone-body{padding:.6rem .8rem .8rem}}
+
+  /* ─── AVATAR LOGIN GRID ─── */
+  .avatar-card {
+    display: flex; flex-direction: column; align-items: center;
+    gap: .4rem; cursor: pointer; padding: .7rem .6rem;
+    border-radius: var(--radius); border: 2px solid transparent;
+    transition: all .2s; position: relative; min-width: 72px;
+    background: var(--parchment);
+  }
+  .avatar-card:hover { border-color: var(--sage); background: #eef5f0; }
+  .avatar-card.selected { border-color: var(--moss); background: #eef5f0; box-shadow: 0 0 0 3px rgba(45,90,61,.15); }
+  .avatar-icon {
+    width: 52px; height: 52px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.5rem; font-family: 'DM Serif Display', serif;
+    font-weight: 700; color: white; position: relative;
+  }
+  .avatar-icon.admin { background: linear-gradient(135deg, var(--amber), #e67e22); }
+  .avatar-icon.worker { background: linear-gradient(135deg, var(--moss), var(--sage)); }
+  .avatar-name { font-size: .75rem; font-weight: 600; color: var(--text); text-align: center; }
+  .avatar-role { font-size: .65rem; color: var(--muted); }
+  .notif-badge {
+    position: absolute; top: -4px; right: -4px;
+    background: var(--alert); color: white;
+    border-radius: 50%; width: 18px; height: 18px;
+    font-size: .62rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    border: 2px solid white; animation: badge-pulse 1.5s infinite;
+  }
+  @keyframes badge-pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.2)} }
+
+  /* ─── REPORT LIST / DETAIL ─── */
+  .report-list-item {
+    background: white; border: 1.5px solid var(--border);
+    border-radius: var(--radius); padding: .9rem 1.1rem;
+    margin-bottom: .6rem; cursor: pointer;
+    display: flex; align-items: center; justify-content: space-between;
+    box-shadow: var(--shadow); transition: all .2s;
+  }
+  .report-list-item:hover { border-color: var(--sage); transform: translateY(-1px); }
+  .report-list-meta { font-size: .78rem; color: var(--muted); margin-top: .2rem; }
+  .report-detail { display: none; }
+  .report-detail.active { display: block; }
+  .report-list-view { display: block; }
+  .report-list-view.hidden { display: none; }
+  .btn-back {
+    display: inline-flex; align-items: center; gap: .4rem;
+    background: var(--parchment); border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm); padding: .5rem 1rem;
+    font-family: 'DM Sans', sans-serif; font-size: .85rem;
+    font-weight: 600; cursor: pointer; margin-bottom: 1rem;
+    color: var(--text); transition: all .2s;
+  }
+  .btn-back:hover { background: var(--border); }
 </style>
 </head>
 <body>
@@ -321,18 +375,24 @@ h3{font-size:.85rem;font-weight:600;letter-spacing:.06em;text-transform:uppercas
       <h1>Pomsky de Lilou</h1>
       <p>Gestion de l'élevage</p>
     </div>
-    <div class="form-group">
-      <label>Compte</label>
-      <select id="login-user">
-        <option value="">— Sélectionner —</option>
-      </select>
+    <!-- AVATAR GRID -->
+    <div id="avatar-grid" style="display:flex;flex-wrap:wrap;gap:.7rem;justify-content:center;margin-bottom:1.2rem"></div>
+    <!-- Hidden select kept for compatibility -->
+    <select id="login-user" style="display:none"></select>
+    <!-- PIN entry — shown after avatar tap -->
+    <div id="pin-section" style="display:none">
+      <div style="text-align:center;margin-bottom:.8rem">
+        <span id="selected-avatar-display" style="font-size:2.5rem;display:block"></span>
+        <strong id="selected-name-display" style="font-size:1rem;color:var(--forest)"></strong>
+      </div>
+      <div class="form-group">
+        <label>Code PIN</label>
+        <input type="password" id="login-pin" placeholder="••••" maxlength="4" inputmode="numeric" autocomplete="off">
+      </div>
+      <div class="login-error" id="login-error"></div>
+      <button class="btn btn-primary" id="btn-login">Connexion</button>
+      <button class="btn btn-secondary" id="btn-back-avatar" style="margin-top:.5rem;width:100%">← Changer de compte</button>
     </div>
-    <div class="form-group">
-      <label>Code PIN</label>
-      <input type="password" id="login-pin" placeholder="••••" maxlength="4" inputmode="numeric">
-    </div>
-    <div class="login-error" id="login-error"></div>
-    <button class="btn btn-primary" id="btn-login">Connexion</button>
     <p style="text-align:center;font-size:.72rem;color:var(--muted);margin-top:.8rem">Version démo — PIN : 1234 pour tous</p>
   </div>
 </div>
@@ -385,13 +445,28 @@ h3{font-size:.85rem;font-weight:600;letter-spacing:.06em;text-transform:uppercas
       <div id="alert-responses-content"></div>
     </div>
 
-    <!-- Lilou messages -->
+    <!-- 1. Messages de Lilou (toujours en premier) -->
     <div id="lilou-messages-banner" style="display:none" class="lilou-messages">
       <h3>🌸 Messages de Lilou</h3>
       <div id="lilou-messages-content"></div>
     </div>
 
-    <!-- Zones -->
+    <!-- 2. Ardoise (avant les tâches) -->
+    <div class="zone-card" id="ardoise-worker-card">
+      <div class="zone-header ardoise" onclick="toggleZone('ardoise-w-body-top',this)">
+        <div class="zone-title"><span style="font-size:1.2rem">📝</span><h2>Ardoise de l'équipe</h2></div>
+        <span class="zone-chevron open">▾</span>
+      </div>
+      <div class="zone-body" id="ardoise-w-body-top">
+        <div class="ardoise-messages" id="ardoise-msgs-worker"></div>
+        <div class="ardoise-input-row" style="margin-top:.6rem">
+          <input class="ardoise-input" id="ardoise-input-worker" placeholder="Écrire un message..." maxlength="300">
+          <button class="btn btn-ok btn-sm" id="btn-ardoise-worker">Envoyer</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. Zones de tâches -->
     <div id="zones-container"></div>
 
     <!-- Fin de service -->
@@ -463,8 +538,11 @@ h3{font-size:.85rem;font-weight:600;letter-spacing:.06em;text-transform:uppercas
           <span class="zone-chevron open">▾</span>
         </div>
         <div class="zone-body" id="ardoise-body">
+          <div style="display:flex;justify-content:flex-end;margin-bottom:.5rem">
+            <button class="btn btn-danger btn-sm" onclick="clearArdoise()">🗑️ Effacer l'historique</button>
+          </div>
           <div class="ardoise-messages" id="ardoise-msgs-admin"></div>
-          <div class="ardoise-input-row">
+          <div class="ardoise-input-row" style="margin-top:.6rem">
             <input class="ardoise-input" id="ardoise-input-admin" placeholder="Écrire un message..." maxlength="300">
             <button class="btn btn-ok btn-sm" id="btn-ardoise-admin">Envoyer</button>
           </div>
@@ -512,7 +590,15 @@ h3{font-size:.85rem;font-weight:600;letter-spacing:.06em;text-transform:uppercas
     <!-- RAPPORTS -->
     <div id="panel-rapports" class="admin-panel">
       <h3 style="margin-bottom:.8rem">Rapports consolidés (3 mois)</h3>
-      <div id="reports-list"><p style="color:var(--muted);font-size:.85rem">Aucun rapport.</p></div>
+      <!-- LIST VIEW -->
+      <div id="reports-list-view" class="report-list-view">
+        <div id="reports-list"><p style="color:var(--muted);font-size:.85rem">Aucun rapport.</p></div>
+      </div>
+      <!-- DETAIL VIEW -->
+      <div id="reports-detail-view" class="report-detail">
+        <button class="btn-back" onclick="showReportList()">← Retour à la liste</button>
+        <div id="reports-detail-content"></div>
+      </div>
     </div>
 
     <!-- COMPTES -->
@@ -667,6 +753,7 @@ let state = {
   alerts: [],
   messages: [],
   ardoise: [],
+  lastSeen: {},
 };
 
 // ── STORAGE ──
@@ -680,19 +767,71 @@ function saveState() {
   }
 }
 function populateLoginSelect() {
+  // Keep hidden select in sync
   const sel = document.getElementById('login-user');
   if (!sel) return;
   const current = sel.value;
   sel.innerHTML = '<option value="">— Sélectionner —</option>';
   state.accounts.forEach(a => {
-    const icon = a.role === 'admin' ? '🌸' : '👷';
-    const role = a.role === 'admin' ? 'Éleveur' : 'Ouvrier';
     const opt = document.createElement('option');
     opt.value = a.id;
-    opt.textContent = icon + ' ' + a.name + ' (' + role + ')';
+    opt.textContent = a.name;
     sel.appendChild(opt);
   });
   if (current) sel.value = current;
+  renderAvatarGrid();
+}
+
+function getNotifCount(accountId) {
+  // Count unread messages + pending alerts for this user
+  const today = todayStr();
+  const lastSeen = (state.lastSeen || {})[accountId] || '';
+  const unreadMsgs = (state.messages || []).filter(m => m.date === today && m.time > lastSeen).length;
+  const unreadArdoise = (state.ardoise || []).filter(m => m.date === today && m.time > lastSeen && m.author !== accountId).length;
+  return unreadMsgs + unreadArdoise;
+}
+
+function renderAvatarGrid() {
+  const grid = document.getElementById('avatar-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  state.accounts.forEach(a => {
+    const notif = getNotifCount(a.id);
+    const initial = a.name[0].toUpperCase();
+    const card = document.createElement('div');
+    card.className = 'avatar-card';
+    card.dataset.id = a.id;
+    card.innerHTML = `
+      <div class="avatar-icon ${a.role}">
+        ${initial}
+        ${notif > 0 ? `<span class="notif-badge">${notif}</span>` : ''}
+      </div>
+      <div class="avatar-name">${a.name}</div>
+      <div class="avatar-role">${a.role === 'admin' ? '🌸 Éleveur' : '🐾 Ouvrier'}</div>
+    `;
+    card.addEventListener('click', () => selectAvatar(a.id));
+    grid.appendChild(card);
+  });
+}
+
+function selectAvatar(id) {
+  // Highlight selected
+  document.querySelectorAll('.avatar-card').forEach(c => c.classList.remove('selected'));
+  const card = document.querySelector(`.avatar-card[data-id="${id}"]`);
+  if (card) card.classList.add('selected');
+  // Update hidden select
+  const sel = document.getElementById('login-user');
+  if (sel) sel.value = id;
+  // Show account info
+  const acc = state.accounts.find(a => a.id === id);
+  if (!acc) return;
+  document.getElementById('selected-avatar-display').textContent = acc.role === 'admin' ? '🌸' : '🐾';
+  document.getElementById('selected-name-display').textContent = acc.name;
+  // Show PIN section
+  document.getElementById('avatar-grid').style.display = 'none';
+  document.getElementById('pin-section').style.display = 'block';
+  document.getElementById('login-pin').value = '';
+  setTimeout(() => document.getElementById('login-pin').focus(), 100);
 }
 
 function loadState() {
@@ -722,7 +861,7 @@ function loadState() {
 
 function mergeState(p) {
   ['accounts','tasksMatin','tasksSoir','periodics','dayData',
-   'reports','alerts','messages','ardoise'].forEach(k => {
+   'reports','alerts','messages','ardoise','lastSeen'].forEach(k => {
     if (p[k] !== undefined && p[k] !== null) state[k] = p[k];
   });
   // Ensure taskStatus values are never null
@@ -761,9 +900,13 @@ function startRealtimeSync() {
     if (workerActive) {
       renderLilouMessages();
       renderArdoise('worker');
-      // Only re-render zones if no active task pending
       if (!state.pendingTaskId) renderWorkerZones();
     }
+    // Ding on new ardoise messages from others
+    const prevCount = window._lastArdoiseCount || 0;
+    const newCount = (state.ardoise||[]).length;
+    if (newCount > prevCount && prevCount > 0) playSound('ding');
+    window._lastArdoiseCount = newCount;
   });
 }
 
@@ -799,6 +942,17 @@ function playSound(type) {
         osc.start(ctx.currentTime + times[i]);
         osc.stop(ctx.currentTime + times[i] + 0.5);
       });
+    } else if (type === 'ding') {
+      // Soft notification ding
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = 880;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.25, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.6);
     } else if (type === 'alerte') {
       // Urgent alert beeps
       [0, 0.3, 0.6].forEach(t => {
@@ -868,6 +1022,10 @@ function doLogin() {
   if (!acc) { showErr('Compte introuvable.'); return; }
   if (acc.pin !== pin) { showErr('PIN incorrect. (Démo : 1234)'); return; }
   state.currentUser = acc;
+  // Track last seen time for notification badges
+  if (!state.lastSeen) state.lastSeen = {};
+  state.lastSeen[acc.id] = formatTime(new Date());
+  saveState();
   if (acc.role === 'admin') { showScreen('admin'); initAdmin(); startRealtimeSync(); }
   else { startWorkerSession(); startRealtimeSync(); }
 }
@@ -882,6 +1040,11 @@ function doLogout() {
   state.pendingTaskId = null;
   document.getElementById('login-pin').value = '';
   document.getElementById('login-user').value = '';
+  document.getElementById('avatar-grid').style.display = 'flex';
+  document.getElementById('pin-section').style.display = 'none';
+  document.getElementById('login-error').style.display = 'none';
+  document.querySelectorAll('.avatar-card').forEach(c => c.classList.remove('selected'));
+  renderAvatarGrid();
   showScreen('login');
 }
 
@@ -1015,8 +1178,15 @@ function renderWorkerZones() {
   container.appendChild(buildRemarksCard('Remarques opérateurs','remarks','📝',REMARK_OPERATOR,true));
   // Remarks éleveur
   container.appendChild(buildRemarksCard('Remarques éleveur','eleveur','🌸',REMARK_ELEVEUR,false));
-  // Ardoise
-  container.appendChild(buildArdoisWorkerCard());
+  // Wire ardoise worker buttons (now rendered above zones)
+  const ardBtn = document.getElementById('btn-ardoise-worker');
+  if (ardBtn && !ardBtn._wired) {
+    ardBtn._wired = true;
+    ardBtn.addEventListener('click', () => sendArdoise('worker'));
+    const ardInp = document.getElementById('ardoise-input-worker');
+    if (ardInp) ardInp.addEventListener('keydown', e => { if(e.key==='Enter') sendArdoise('worker'); });
+  }
+  renderArdoise('worker');
 
   updateProgress(tasks);
   checkFinService(tasks);
@@ -1261,31 +1431,41 @@ function sendArdoise(context) {
   if (!state.ardoise) state.ardoise = [];
   state.ardoise.push(msg);
   inp.value = '';
+  playSound('ding');
   saveState();
-  renderArdoise(context);
-  if (context==='admin') renderArdoise('admin');
+  renderArdoise('worker');
+  renderArdoise('admin');
 }
 
 function renderArdoise(context) {
-  const msgsId = context==='worker' ? 'ardoise-msgs-worker' : 'ardoise-msgs-admin';
-  const container = document.getElementById(msgsId);
+  var msgsId = context==='worker' ? 'ardoise-msgs-worker' : 'ardoise-msgs-admin';
+  var container = document.getElementById(msgsId);
   if (!container) return;
-  const msgs = (state.ardoise||[]);
+  // Newest message first
+  var msgs = (state.ardoise||[]).slice().reverse();
   if (!msgs.length) {
-    container.innerHTML='<p style="color:var(--muted);font-size:.82rem;text-align:center;padding:.5rem">L\'ardoise est vide.</p>';
+    container.innerHTML='<p style="color:var(--muted);font-size:.82rem;text-align:center;padding:.5rem">L'ardoise est vide.</p>';
     return;
   }
-  const me = state.currentUser?.name;
-  container.innerHTML = msgs.map(m => {
-    const isMine = m.author === me;
-    const isLilou = m.role === 'admin';
-    const cls = isMine ? 'mine' : isLilou ? 'lilou' : 'other';
-    return `<div class="ardoise-msg ${cls}">
-      <div class="ardoise-meta">${m.author} · ${m.time}</div>
-      <div>${m.text}</div>
-    </div>`;
+  var me = state.currentUser ? state.currentUser.name : '';
+  container.innerHTML = msgs.map(function(m) {
+    var isMine = m.author === me;
+    var isLilou = m.role === 'admin';
+    var cls = isMine ? 'mine' : isLilou ? 'lilou' : 'other';
+    return '<div class="ardoise-msg '+cls+'">'
+      +'<div class="ardoise-meta">'+m.author+' · '+m.date+' '+m.time+'</div>'
+      +'<div>'+m.text+'</div>'
+      +'</div>';
   }).join('');
-  container.scrollTop = container.scrollHeight;
+  container.scrollTop = 0;
+}
+
+function clearArdoise() {
+  if (!confirm('Effacer tout l'historique de l'ardoise ? Cette action est irréversible.')) return;
+  state.ardoise = [];
+  saveState();
+  renderArdoise('admin');
+  showToast('🗑️ Historique effacé');
 }
 
 // ── ADMIN ──
@@ -1480,29 +1660,61 @@ function deletePeriodic(id) {
 
 function renderReports() {
   const list = document.getElementById('reports-list');
-  if (!state.reports.length) { list.innerHTML='<p style="color:var(--muted);font-size:.85rem">Aucun rapport.</p>'; return; }
-  list.innerHTML = state.reports.map(r => {
-    const matDone = r.tasksMatin.filter(t=>t.done).length;
-    const soirDone = r.tasksSoir.filter(t=>t.done).length;
-    const matRows = r.tasksMatin.map(t=>`<tr><td>${t.num}</td><td>${t.label}</td><td style="color:${t.done?'var(--ok)':'var(--alert)'}">${t.done?'✓':'✗'}</td><td style="font-family:'DM Mono',monospace">${t.time}</td></tr>`).join('');
-    const soirRows = r.tasksSoir.map(t=>`<tr><td>${t.num}</td><td>${t.label}</td><td style="color:${t.done?'var(--ok)':'var(--alert)'}">${t.done?'✓':'✗'}</td><td style="font-family:'DM Mono',monospace">${t.time}</td></tr>`).join('');
-    return `<div class="report-card">
-      <div class="report-card-header">
-        <strong>📋 ${r.date}</strong>
-        <span style="font-size:.78rem;color:var(--muted)">${matDone}+${soirDone} tâches</span>
-      </div>
-      <div class="report-card-body">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem;margin-bottom:.6rem;font-size:.78rem">
-          <div><span class="vacation-label matin">☀️ Matin</span><br>${r.workerMatin}<br>${r.matinStart} → ${r.matinEnd}</div>
-          <div><span class="vacation-label soir">🌙 Soir</span><br>${r.workerSoir}<br>${r.soirStart} → ${r.soirEnd}</div>
-        </div>
-        <h3 style="margin-bottom:.4rem">Simogramme Matin</h3>
-        <div class="simo-wrap"><table class="simo-table"><thead><tr><th>#</th><th>Tâche</th><th>Fait</th><th>Heure</th></tr></thead><tbody>${matRows}</tbody></table></div>
-        <h3 style="margin:.7rem 0 .4rem">Simogramme Soir</h3>
-        <div class="simo-wrap"><table class="simo-table"><thead><tr><th>#</th><th>Tâche</th><th>Fait</th><th>Heure</th></tr></thead><tbody>${soirRows}</tbody></table></div>
-      </div>
-    </div>`;
+  if (!list) return;
+  if (!state.reports || !state.reports.length) {
+    list.innerHTML='<p style="color:var(--muted);font-size:.85rem">Aucun rapport.</p>';
+    return;
+  }
+  list.innerHTML = state.reports.map((r, idx) => {
+    const matDone  = (r.tasksMatin||[]).filter(t=>t&&t.done).length;
+    const soirDone = (r.tasksSoir||[]).filter(t=>t&&t.done).length;
+    const total    = (r.tasksMatin||[]).length + (r.tasksSoir||[]).length;
+    const pct = total ? Math.round((matDone+soirDone)/total*100) : 0;
+    return '<div class="report-list-item" onclick="showReportDetail('+idx+')">'
+      + '<div>'
+      + '<strong style="font-size:.95rem">📋 '+r.date+'</strong>'
+      + '<div class="report-list-meta">☀️ '+(r.workerMatin||'—')+' &nbsp;·&nbsp; 🌙 '+(r.workerSoir||'—')+'</div>'
+      + '<div class="report-list-meta" style="margin-top:.3rem">'+(matDone+soirDone)+'/'+total+' tâches · '+pct+'%</div>'
+      + '</div>'
+      + '<span style="font-size:1.3rem;color:var(--muted)">›</span>'
+      + '</div>';
   }).join('');
+}
+
+function showReportDetail(idx) {
+  var r = state.reports[idx];
+  if (!r) return;
+  document.getElementById('reports-list-view').classList.add('hidden');
+  document.getElementById('reports-detail-view').classList.add('active');
+  var matRows = (r.tasksMatin||[]).map(function(t){
+    return '<tr><td>'+t.num+'</td><td>'+t.label+'</td>'
+      +'<td style="color:'+(t.done?'var(--ok)':'var(--alert)')+'">'+  (t.done?'✓':'✗')+'</td>'
+      +'<td style="font-family:monospace">'+t.time+'</td></tr>';
+  }).join('');
+  var soirRows = (r.tasksSoir||[]).map(function(t){
+    return '<tr><td>'+t.num+'</td><td>'+t.label+'</td>'
+      +'<td style="color:'+(t.done?'var(--ok)':'var(--alert)')+'">'+  (t.done?'✓':'✗')+'</td>'
+      +'<td style="font-family:monospace">'+t.time+'</td></tr>';
+  }).join('');
+  document.getElementById('reports-detail-content').innerHTML =
+    '<div class="report-card">'
+    +'<div class="report-card-header"><strong>📋 '+r.date+'</strong></div>'
+    +'<div class="report-card-body">'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.8rem;font-size:.82rem">'
+    +'<div style="background:#e8f4fd;border-radius:8px;padding:.6rem"><span class="vacation-label matin">☀️ Matin</span><br><strong>'+(r.workerMatin||'—')+'</strong><br>'+(r.matinStart||'')+'→'+(r.matinEnd||'')+'</div>'
+    +'<div style="background:#fef9e7;border-radius:8px;padding:.6rem"><span class="vacation-label soir">🌙 Soir</span><br><strong>'+(r.workerSoir||'—')+'</strong><br>'+(r.soirStart||'')+'→'+(r.soirEnd||'')+'</div>'
+    +'</div>'
+    +'<h3 style="margin-bottom:.4rem">Simogramme Matin</h3>'
+    +'<div class="simo-wrap"><table class="simo-table"><thead><tr><th>#</th><th>Tâche</th><th>✓</th><th>Heure</th></tr></thead><tbody>'+matRows+'</tbody></table></div>'
+    +'<h3 style="margin:.8rem 0 .4rem">Simogramme Soir</h3>'
+    +'<div class="simo-wrap"><table class="simo-table"><thead><tr><th>#</th><th>Tâche</th><th>✓</th><th>Heure</th></tr></thead><tbody>'+soirRows+'</tbody></table></div>'
+    +'</div></div>';
+  document.getElementById('panel-rapports').scrollTop = 0;
+}
+
+function showReportList() {
+  document.getElementById('reports-list-view').classList.remove('hidden');
+  document.getElementById('reports-detail-view').classList.remove('active');
 }
 
 function renderAccounts() {
@@ -1581,6 +1793,13 @@ function resetPin(userId) {
   // Login
   document.getElementById('btn-login').addEventListener('click', doLogin);
   document.getElementById('login-pin').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+  document.getElementById('btn-back-avatar').addEventListener('click', () => {
+    document.getElementById('avatar-grid').style.display = 'flex';
+    document.getElementById('pin-section').style.display = 'none';
+    document.getElementById('login-user').value = '';
+    document.getElementById('login-error').style.display = 'none';
+    document.querySelectorAll('.avatar-card').forEach(c => c.classList.remove('selected'));
+  });
 
   // Logout
   document.getElementById('btn-logout-worker').addEventListener('click', doLogout);
