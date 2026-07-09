@@ -795,7 +795,9 @@ function renderAvatarGrid() {
   const grid = document.getElementById('avatar-grid');
   if (!grid) return;
   grid.innerHTML = '';
-  state.accounts.forEach(a => {
+  // Use demo accounts as fallback if state not yet loaded
+  const accounts = (state.accounts && state.accounts.length) ? state.accounts : DEMO_ACCOUNTS;
+  accounts.forEach(a => {
     const notif = getNotifCount(a.id);
     const initial = a.name[0].toUpperCase();
     const card = document.createElement('div');
@@ -1787,6 +1789,9 @@ function resetPin(userId) {
 // WIRE EVENTS
 // ══════════════════════════════════════════
 (function init() {
+  // Show default accounts immediately before Firebase loads
+  renderAvatarGrid();
+  
   loadState();
   populateLoginSelect();
 
