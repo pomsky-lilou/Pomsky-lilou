@@ -70,6 +70,13 @@
     console.warn('Firebase init error:', e);
     window._fb = null;
   }
+  // Safety: re-render avatar grid after Firebase init
+  setTimeout(function() {
+    var grid = document.getElementById('avatar-grid');
+    if (grid && !grid.children.length) {
+      if (typeof renderAvatarGrid === 'function') renderAvatarGrid();
+    }
+  }, 800);
 </script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
@@ -1446,7 +1453,7 @@ function renderArdoise(context) {
   // Newest message first
   var msgs = (state.ardoise||[]).slice().reverse();
   if (!msgs.length) {
-    container.innerHTML='<p style="color:var(--muted);font-size:.82rem;text-align:center;padding:.5rem">L'ardoise est vide.</p>';
+    container.innerHTML='<p style="color:var(--muted);font-size:.82rem;text-align:center;padding:.5rem">L\'ardoise est vide.</p>';
     return;
   }
   var me = state.currentUser ? state.currentUser.name : '';
@@ -1463,7 +1470,7 @@ function renderArdoise(context) {
 }
 
 function clearArdoise() {
-  if (!confirm('Effacer tout l'historique de l'ardoise ? Cette action est irréversible.')) return;
+  if (!confirm('Effacer tout l\'historique de l\'ardoise ? Cette action est irréversible.')) return;
   state.ardoise = [];
   saveState();
   renderArdoise('admin');
@@ -1790,10 +1797,9 @@ function resetPin(userId) {
 // ══════════════════════════════════════════
 (function init() {
   // Show default accounts immediately before Firebase loads
-  renderAvatarGrid();
-  
   loadState();
   populateLoginSelect();
+  renderAvatarGrid();
 
   // Login
   document.getElementById('btn-login').addEventListener('click', doLogin);
@@ -1846,6 +1852,9 @@ function resetPin(userId) {
   document.querySelectorAll('[data-close]').forEach(btn => {
     btn.addEventListener('click', () => closeModal(btn.dataset.close));
   });
+
+  // Final safety render of avatar grid
+  renderAvatarGrid();
 })();
 </script>
 </body>
