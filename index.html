@@ -370,6 +370,44 @@ h3{font-size:.85rem;font-weight:600;letter-spacing:.06em;text-transform:uppercas
     color: var(--text); transition: all .2s;
   }
   .btn-back:hover { background: var(--border); }
+
+  /* ─── REMARKS TABLE ─── */
+  .remarks-table { width:100%; border-collapse:collapse; }
+  .remarks-table th {
+    background: var(--forest); color: white;
+    padding: .4rem .5rem; font-size: .7rem;
+    font-weight: 600; text-align: center;
+    letter-spacing: .03em;
+  }
+  .remarks-table th:first-child { text-align: left; min-width: 140px; }
+  .remarks-table td {
+    padding: .35rem .3rem; border-bottom: 1px solid var(--border);
+    text-align: center; vertical-align: middle;
+  }
+  .remarks-table td:first-child {
+    font-size: .82rem; font-weight: 600; color: var(--text);
+    text-align: left; padding-left: .5rem;
+  }
+  .remarks-table tr:nth-child(even) td { background: var(--cream); }
+  .remarks-table tr:hover td { background: #eef5f0; }
+  .level-btn-sm {
+    padding: .22rem .4rem; border-radius: 12px; font-size: .68rem;
+    font-weight: 600; border: 1.5px solid transparent;
+    cursor: pointer; transition: all .15s;
+    font-family: 'DM Sans', sans-serif; white-space: nowrap;
+  }
+  .level-btn-sm[data-level="OK"]        { border-color:var(--ok);    color:var(--ok); }
+  .level-btn-sm[data-level="Faible"]    { border-color:var(--warn);  color:var(--warn); }
+  .level-btn-sm[data-level="Vide"]      { border-color:var(--alert); color:var(--alert); }
+  .level-btn-sm[data-level="Urgent"]    { background:var(--alert);   color:white; border-color:var(--alert); }
+  .level-btn-sm[data-level="A changer"]{ border-color:var(--info);  color:var(--info); }
+  .level-btn-sm[data-level="A réparer"]{ border-color:#8e44ad;      color:#8e44ad; }
+  .level-btn-sm.selected[data-level="OK"]        { background:var(--ok);    color:white; }
+  .level-btn-sm.selected[data-level="Faible"]    { background:var(--warn);  color:white; }
+  .level-btn-sm.selected[data-level="Vide"]      { background:var(--alert); color:white; }
+  .level-btn-sm.selected[data-level="A changer"] { background:var(--info);  color:white; }
+  .level-btn-sm.selected[data-level="A réparer"] { background:#8e44ad;      color:white; }
+  .remarks-table-wrap { overflow-x: auto; }
 </style>
 </head>
 <body>
@@ -401,6 +439,10 @@ h3{font-size:.85rem;font-weight:600;letter-spacing:.06em;text-transform:uppercas
       <button class="btn btn-secondary" id="btn-back-avatar" style="margin-top:.5rem;width:100%">← Changer de compte</button>
     </div>
     <p style="text-align:center;font-size:.72rem;color:var(--muted);margin-top:.8rem">Version démo — PIN : 1234 pour tous</p>
+    <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
+      <p style="font-size:.75rem;color:var(--moss);font-weight:700;letter-spacing:.06em">🇦🇩 KAS Solución</p>
+      <p style="font-size:.7rem;color:var(--muted);margin-top:.15rem">v0.6b — 2026</p>
+    </div>
   </div>
 </div>
 
@@ -920,9 +962,30 @@ function startRealtimeSync() {
 }
 
 // ── SOUNDS (Web Audio API — no external files needed) ──
+// Global AudioContext — unlocked on first user interaction
+let _audioCtx = null;
+function getAudioCtx() {
+  if (!_audioCtx) {
+    _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (_audioCtx.state === 'suspended') {
+    _audioCtx.resume();
+  }
+  return _audioCtx;
+}
+// Unlock audio on very first tap (required by mobile browsers)
+document.addEventListener('touchstart', function unlockAudio() {
+  getAudioCtx();
+  document.removeEventListener('touchstart', unlockAudio);
+}, { once: true });
+document.addEventListener('click', function unlockAudioClick() {
+  getAudioCtx();
+  document.removeEventListener('click', unlockAudioClick);
+}, { once: true });
+
 function playSound(type) {
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = getAudioCtx();
     if (type === 'cloture') {
       // 3 ascending tones for vacation closure
       [0, 0.25, 0.5].forEach((t, i) => {
@@ -1205,18 +1268,46 @@ function buildRemarksCard(title, cls, icon, remarks) {
   const card = document.createElement('div');
   card.className = 'zone-card';
   const uid = cls+'_'+Math.random().toString(36).slice(2,6);
+
+  // Separate level-type and text-type remarks
+  const levelRemarks = remarks.filter(r => r.type === 'level');
+  const textRemarks  = remarks.filter(r => r.type === 'text');
+
+  // Build table for level remarks
+  let tableHTML = '';
+  if (levelRemarks.length) {
+    const headerCols = LEVELS.map(l => `<th>${l}</th>`).join('');
+    const rows = levelRemarks.map(r => {
+      const cols = LEVELS.map(l => {
+        const sel = state.remarkLevels[r.id] === l ? 'selected' : '';
+        return `<td><button class="level-btn-sm ${sel}" data-level="${l}" onclick="selectLevel('${r.id}','${l}',this)">${l}</button></td>`;
+      }).join('');
+      return `<tr><td>${r.label}</td>${cols}</tr>`;
+    }).join('');
+    tableHTML = `
+      <div class="remarks-table-wrap">
+        <table class="remarks-table">
+          <thead><tr><th>Élément</th>${headerCols}</tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  }
+
+  // Build text areas for text remarks
+  const textHTML = textRemarks.map(r => `
+    <div class="remark-item" style="margin-top:.7rem">
+      <div class="remark-label">${r.label}</div>
+      <textarea class="remark-text" placeholder="Commentaire libre..." onchange="saveRemarkText('${r.id}',this.value)">${state.remarkTexts[r.id]||''}</textarea>
+    </div>`).join('');
+
   card.innerHTML = `
     <div class="zone-header ${cls}" onclick="toggleZone('${uid}',this)">
       <div class="zone-title"><span style="font-size:1.2rem">${icon}</span><h2>${title}</h2></div>
       <span class="zone-chevron open">▾</span>
     </div>
     <div class="zone-body" id="${uid}">
-      ${remarks.map(r=>`
-        <div class="remark-item">
-          <div class="remark-label">${r.label}</div>
-          ${r.type==='level'?`<div class="remark-levels">${LEVELS.map(l=>`<button class="level-btn ${state.remarkLevels[r.id]===l?'selected':''}" data-level="${l}" onclick="selectLevel('${r.id}','${l}',this)">${l}</button>`).join('')}</div>`:''}
-          <textarea class="remark-text" placeholder="Commentaire..." onchange="saveRemarkText('${r.id}',this.value)">${state.remarkTexts[r.id]||''}</textarea>
-        </div>`).join('')}
+      ${tableHTML}
+      ${textHTML}
     </div>`;
   return card;
 }
@@ -1472,9 +1563,17 @@ function renderArdoise(context) {
 function clearArdoise() {
   if (!confirm('Effacer tout l\'historique de l\'ardoise ? Cette action est irréversible.')) return;
   state.ardoise = [];
-  saveState();
+  // Force immediate push to Firebase so ALL devices see the clear
+  try {
+    const d = JSON.stringify(state);
+    try { localStorage.setItem('pomsky_v2', d); } catch(e) { _mem.s = d; }
+    if (window._fb && window._fb.connected) {
+      window._fb.saveToFirebase(state);
+    }
+  } catch(e) {}
   renderArdoise('admin');
-  showToast('🗑️ Historique effacé');
+  renderArdoise('worker');
+  showToast('🗑️ Ardoise effacée pour toute l\'équipe');
 }
 
 // ── ADMIN ──
