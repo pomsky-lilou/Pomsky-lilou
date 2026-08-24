@@ -153,7 +153,39 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
 .toast{position:fixed;bottom:5rem;left:50%;transform:translateX(-50%);background:var(--forest);color:white;padding:.65rem 1.3rem;border-radius:30px;font-size:.83rem;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.3);z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
 .toast.show{opacity:1}
 @media(max-width:600px){.stats-grid{grid-template-columns:1fr 1fr}.form-row{grid-template-columns:1fr}}
-@media print{.bottom-nav,.topbar,.btn,.modal-overlay{display:none!important}.content{padding:0;max-width:100%}.card{break-inside:avoid}}
+@media print{.bottom-nav,.topbar,.btn,.modal-overlay,.mod-tabs{display:none!important}.content{padding:0;max-width:100%}.card{break-inside:avoid}#cert-content{border:none!important;padding:.5rem!important}}
+.ped-tree{display:grid;grid-template-columns:2fr 2fr 2fr 3fr;gap:2px;font-size:.7rem;overflow-x:auto}
+.ped-col{display:flex;flex-direction:column;justify-content:space-around}
+.ped-box{border:1.5px solid var(--border);border-radius:6px;padding:.4rem .55rem;margin:2px;background:white;min-height:44px;position:relative}
+.ped-box.male{border-left:4px solid var(--info)}
+.ped-box.female{border-left:4px solid #e91e8c}
+.ped-box.subject{border:2px solid var(--forest);background:var(--parchment)}
+.ped-name{font-weight:700;font-size:.75rem;color:var(--forest);line-height:1.2}
+.ped-meta{font-size:.62rem;color:var(--muted);margin-top:.1rem}
+.ped-gen-label{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:center;padding:.2rem 0;background:var(--parchment);border-radius:4px;margin-bottom:3px}
+#cert-content{
+  background-color:#fdf8f0;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  position:relative;
+}
+#cert-content::before{
+  content:'🐾';
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  font-size:18rem;opacity:.03;pointer-events:none;z-index:0;line-height:1;
+}
+#cert-content>*{position:relative;z-index:1;}
+.cert-header{text-align:center;border-bottom:2px solid var(--forest);padding-bottom:1rem;margin-bottom:1rem}
+.cert-title{font-family:'DM Serif Display',serif;font-size:1.6rem;color:var(--forest)}
+.cert-subtitle{font-size:.85rem;color:var(--muted);margin-top:.3rem}
+.cert-animal{text-align:center;margin:1rem 0;padding:1rem;background:var(--parchment);border-radius:var(--radius)}
+.cert-animal-name{font-family:'DM Serif Display',serif;font-size:1.4rem;color:var(--forest)}
+.cert-siblings{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.5rem}
+.cert-sibling-chip{background:var(--parchment);border:1px solid var(--border);border-radius:20px;padding:.2rem .6rem;font-size:.75rem}
+.animal-card{background:white;border:1.5px solid var(--border);border-radius:var(--radius);padding:.75rem .9rem;margin-bottom:.5rem;display:flex;align-items:center;gap:.7rem;box-shadow:var(--shadow);cursor:pointer;transition:all .2s}
+.animal-card:hover{border-color:var(--sage);transform:translateY(-1px)}
+.animal-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;font-weight:700;color:white;flex-shrink:0}
+.animal-av.M{background:var(--info)}.animal-av.F{background:#e91e8c}
 </style>
 </head>
 <body>
@@ -180,11 +212,12 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
   </div>
   <nav class="bottom-nav">
     <button class="active" data-panel="tableau"><span class="ni">📊</span>Tableau</button>
-    <button data-panel="saillies"><span class="ni">🐕</span>Saillies</button>
-    <button data-panel="bebes"><span class="ni">🍼</span>Bébés</button>
+    <button data-panel="outils"><span class="ni">⚙️</span>Outils</button>
     <button data-panel="commercial"><span class="ni">🛒</span>Ventes</button>
     <button data-panel="finance"><span class="ni">💶</span>Finance</button>
-    <button data-panel="outils"><span class="ni">⚙️</span>Outils</button>
+    <button data-panel="saillies"><span class="ni">🐕</span>Saillies</button>
+    <button data-panel="bebes"><span class="ni">🍼</span>Bébés</button>
+    <button data-panel="pedigree"><span class="ni">🏆</span>Pedigree</button>
   </nav>
   <div class="content">
     <div class="date-header" id="admin-date"></div>
@@ -443,6 +476,108 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
         </div>
       </div>
     </div>
+    <!-- PEDIGREE -->
+    <div id="panel-pedigree" class="panel">
+      <div class="mod-tabs">
+        <button class="mod-tab active" data-sub="ped-animaux">🐕 Animaux</button>
+        <button class="mod-tab" data-sub="ped-new">➕ Nouvel animal</button>
+        <button class="mod-tab" data-sub="ped-certificat">📜 Certificat</button>
+      </div>
+
+      <!-- Liste animaux -->
+      <div id="ped-animaux" class="subtab active">
+        <div style="display:flex;gap:.4rem;margin-bottom:.6rem;flex-wrap:wrap">
+          <button class="btn btn-secondary btn-sm ped-filter active" data-sex="all">Tous</button>
+          <button class="btn btn-secondary btn-sm ped-filter" data-sex="F">♀ Femelles</button>
+          <button class="btn btn-secondary btn-sm ped-filter" data-sex="M">♂ Mâles</button>
+        </div>
+        <div id="ped-animaux-list"></div>
+      </div>
+
+      <!-- Nouvel animal -->
+      <div id="ped-new" class="subtab">
+        <div class="card">
+          <h2 style="margin-bottom:.8rem">Fiche individuelle</h2>
+          <div class="form-row">
+            <div class="field"><label>Nom de pedigree</label><input type="text" id="pa-nom" placeholder="Moon de l'Orée des Moonskys"></div>
+            <div class="field"><label>Nom courant</label><input type="text" id="pa-surnom" placeholder="Moon"></div>
+          </div>
+          <div class="form-row">
+            <div class="field"><label>Sexe</label><select id="pa-sexe"><option value="F">♀ Femelle</option><option value="M">♂ Mâle</option></select></div>
+            <div class="field"><label>Date de naissance</label><input type="date" id="pa-naiss"></div>
+            <div class="field"><label>Statut</label>
+              <select id="pa-statut">
+                <option value="actif">Actif(ve)</option>
+                <option value="retraite">Retraite</option>
+                <option value="decede">Décédé(e)</option>
+                <option value="vendu">Vendu(e)</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="field"><label>Couleur robe</label><input type="text" id="pa-robe" placeholder="Gris loup et blanc"></div>
+            <div class="field"><label>Couleur yeux</label><input type="text" id="pa-yeux" placeholder="Bleu bicolore"></div>
+          </div>
+          <div class="form-row">
+            <div class="field"><label>N° puce</label><input type="text" id="pa-puce" placeholder="250268500000000"></div>
+            <div class="field"><label>Affixe / Élevage d'origine</label><input type="text" id="pa-affixe" placeholder="L'Orée des Moonskys"></div>
+          </div>
+          <div style="background:var(--parchment);border-radius:var(--radius-sm);padding:.7rem;margin:.6rem 0">
+            <h3 style="margin-bottom:.5rem">Parents</h3>
+            <div class="form-row">
+              <div class="field"><label>🔵 Père (nom pedigree)</label><input type="text" id="pa-pere" placeholder="Nom du père"></div>
+              <div class="field"><label>🔴 Mère (nom pedigree)</label><input type="text" id="pa-mere" placeholder="Nom de la mère"></div>
+            </div>
+          </div>
+          <div style="background:var(--parchment);border-radius:var(--radius-sm);padding:.7rem;margin:.3rem 0 .6rem">
+            <h3 style="margin-bottom:.5rem">Grands-parents</h3>
+            <div class="form-row">
+              <div class="field"><label>🔵 GP paternel</label><input type="text" id="pa-gpp" placeholder="Grand-père paternel"></div>
+              <div class="field"><label>🔴 GM paternelle</label><input type="text" id="pa-gmp" placeholder="Grand-mère paternelle"></div>
+              <div class="field"><label>🔵 GP maternel</label><input type="text" id="pa-gpm" placeholder="Grand-père maternel"></div>
+              <div class="field"><label>🔴 GM maternelle</label><input type="text" id="pa-gmm" placeholder="Grand-mère maternelle"></div>
+            </div>
+          </div>
+          <div style="background:var(--parchment);border-radius:var(--radius-sm);padding:.7rem;margin:.3rem 0 .6rem">
+            <h3 style="margin-bottom:.5rem">Arrière-grands-parents</h3>
+            <div class="form-row">
+              <div class="field"><label>AGP Pat-Pat</label><input type="text" id="pa-agpp1" placeholder="Arrière-GP"></div>
+              <div class="field"><label>AGM Pat-Pat</label><input type="text" id="pa-agpp2" placeholder="Arrière-GM"></div>
+              <div class="field"><label>AGP Mat-Pat</label><input type="text" id="pa-agpm1" placeholder="Arrière-GP"></div>
+              <div class="field"><label>AGM Mat-Pat</label><input type="text" id="pa-agpm2" placeholder="Arrière-GM"></div>
+            </div>
+            <div class="form-row">
+              <div class="field"><label>AGP Pat-Mat</label><input type="text" id="pa-agpat1" placeholder="Arrière-GP"></div>
+              <div class="field"><label>AGM Pat-Mat</label><input type="text" id="pa-agpat2" placeholder="Arrière-GM"></div>
+              <div class="field"><label>AGP Mat-Mat</label><input type="text" id="pa-agmat1" placeholder="Arrière-GP"></div>
+              <div class="field"><label>AGM Mat-Mat</label><input type="text" id="pa-agmat2" placeholder="Arrière-GM"></div>
+            </div>
+          </div>
+          <div class="field" style="margin-bottom:.6rem"><label>Titres / Résultats / Notes santé</label><textarea id="pa-notes" placeholder="Tests ADN, résultats expo, certificats santé..."></textarea></div>
+          <button class="btn btn-ok" id="btn-save-animal">💾 Enregistrer</button>
+        </div>
+      </div>
+
+      <!-- Certificat imprimable -->
+      <div id="ped-certificat" class="subtab">
+        <div class="card">
+          <h2 style="margin-bottom:.7rem">Générer un certificat</h2>
+          <div class="field" style="margin-bottom:.6rem">
+            <label>Chiot concerné</label>
+            <select id="cert-chiot"><option value="">— Choisir un animal —</option></select>
+          </div>
+          <button class="btn btn-ok" id="btn-gen-cert">📜 Générer le certificat</button>
+        </div>
+        <div id="cert-preview" style="display:none">
+          <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-bottom:.6rem">
+            <button class="btn btn-secondary btn-sm" onclick="window.print()">🖨️ Imprimer</button>
+            <button class="btn btn-secondary btn-sm" onclick="document.getElementById('cert-preview').style.display='none'">✕ Fermer</button>
+          </div>
+          <div id="cert-content" style="background:white;border:2px solid var(--border);border-radius:var(--radius);padding:1.5rem;font-family:'DM Sans',sans-serif"></div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -485,6 +620,7 @@ let state={
   tasksSoir:[{id:101,zone:'nurserie2',num:1,label:"Observer l'état de santé (soir)"},{id:102,zone:'nurserie2',num:2,label:"Repas du soir — eau"},{id:103,zone:'nurserie1',num:3,label:"Observer l'état de santé (soir)"},{id:104,zone:'nurserie1',num:4,label:"Repas du soir — eau"},{id:105,zone:'parc',num:5,label:"Vérification parc et dortoirs"},{id:106,zone:'parc',num:6,label:"Fermeture nocturne des accès"},{id:107,zone:'nurserie2',num:7,label:"Nettoyage intérieur soir"},{id:108,zone:'nurserie1',num:8,label:"Nettoyage intérieur soir"},{id:109,zone:'parc',num:9,label:"Vérification eau dortoirs"},{id:110,zone:'parc',num:10,label:"Rangement matériel"}],
   periodics:[],dayData:{},reports:[],alerts:[],messages:[],ardoise:[],lastSeen:{},
   saillies:[],portees:[],clients:[],depenses:[],emailConfig:'',actionsCom:{},
+  animaux:[],
   calMonth:new Date().getMonth(),calYear:new Date().getFullYear(),
   currentVac:'matin',selSaillie:null,selClient:null,selPortee:null,
 };
@@ -502,7 +638,7 @@ function loadState(){
   if(window._fb)window._fb.load(function(d){if(d){mergeState(d);try{localStorage.setItem('pomsky_v2',JSON.stringify(d));}catch(e){}renderAll();}});
 }
 function mergeState(p){
-  ['accounts','tasksMatin','tasksSoir','periodics','dayData','reports','alerts','messages','ardoise','lastSeen','saillies','portees','clients','depenses','emailConfig','actionsCom'].forEach(k=>{if(p[k]!==undefined&&p[k]!==null)state[k]=p[k];});
+  ['accounts','tasksMatin','tasksSoir','periodics','dayData','reports','alerts','messages','ardoise','lastSeen','saillies','portees','clients','depenses','emailConfig','actionsCom','animaux'].forEach(k=>{if(p[k]!==undefined&&p[k]!==null)state[k]=p[k];});
 }
 function startSync(){
   if(!window._fb)return;
@@ -543,6 +679,7 @@ function renderPanel(n){
   else if(n==='commercial')renderCRM();
   else if(n==='finance')renderFinance();
   else if(n==='outils')renderOutils();
+  else if(n==='pedigree'){renderAnimaux();populateCertSelect();}
 }
 function renderAll(){
   const active=document.querySelector('.panel.active');
@@ -766,10 +903,12 @@ function saveClient(){
   const depart=document.getElementById('c-depart').value;
   const notes=document.getElementById('c-notes').value;
   if(!prenom||!nom){toast('Nom et prénom requis');return;}
-  const caution=Math.round(prix*0.30);
+  const acompte=Math.round(prix*0.30);
+  const caution=2000;
   const client={id:Date.now().toString(),prenom,nom,tel,email,chiot,prix,typeResa,paiement,visite,depart,notes,caution,
-    paiements:paiement==='3fois'?[{label:'Virement 1',montant:Math.round(prix/3),recu:false,date:''},{label:'Virement 2',montant:Math.round(prix/3),recu:false,date:''},{label:'Virement 3',montant:prix-2*Math.round(prix/3),recu:false,date:''}]:[{label:'Paiement comptant',montant:prix,recu:false,date:''}],
-    chequeSteril:{montant:caution,recu:false,rendu:false},
+    acompte,
+    paiements:paiement==='3fois'?[{label:'Acompte réservation (30%)',montant:acompte,recu:false,date:''},{label:'Virement 2',montant:Math.round((prix-acompte)/2),recu:false,date:''},{label:'Solde final',montant:prix-acompte-Math.round((prix-acompte)/2),recu:false,date:''}]:[{label:'Acompte réservation (30%)',montant:acompte,recu:false,date:''},{label:'Solde',montant:prix-acompte,recu:false,date:''}],
+    chequeSteril:{montant:2000,recu:false,rendu:false},
     createdAt:new Date().toISOString()};
   if(chiot)(state.portees||[]).forEach(p=>{const c=(p.chiots||[]).find(x=>x.id===chiot);if(c)c.vendu=true;});
   if(!state.clients)state.clients=[];
@@ -920,6 +1059,219 @@ function renderCalendar(){
   document.getElementById('cal-body').innerHTML=html;
 }
 
+// ══════ PEDIGREE ══════
+let pedFilter='all';
+
+function saveAnimal(){
+  const nom=document.getElementById('pa-nom').value.trim();
+  const surnom=document.getElementById('pa-surnom').value.trim();
+  const sexe=document.getElementById('pa-sexe').value;
+  const naiss=document.getElementById('pa-naiss').value;
+  const statut=document.getElementById('pa-statut').value;
+  const robe=document.getElementById('pa-robe').value.trim();
+  const yeux=document.getElementById('pa-yeux').value.trim();
+  const puce=document.getElementById('pa-puce').value.trim();
+  const affixe=document.getElementById('pa-affixe').value.trim();
+  const pere=document.getElementById('pa-pere').value.trim();
+  const mere=document.getElementById('pa-mere').value.trim();
+  const gpp=document.getElementById('pa-gpp').value.trim();
+  const gmp=document.getElementById('pa-gmp').value.trim();
+  const gpm=document.getElementById('pa-gpm').value.trim();
+  const gmm=document.getElementById('pa-gmm').value.trim();
+  const agpp1=document.getElementById('pa-agpp1').value.trim();
+  const agpp2=document.getElementById('pa-agpp2').value.trim();
+  const agpm1=document.getElementById('pa-agpm1').value.trim();
+  const agpm2=document.getElementById('pa-agpm2').value.trim();
+  const agpat1=document.getElementById('pa-agpat1').value.trim();
+  const agpat2=document.getElementById('pa-agpat2').value.trim();
+  const agmat1=document.getElementById('pa-agmat1').value.trim();
+  const agmat2=document.getElementById('pa-agmat2').value.trim();
+  const notes=document.getElementById('pa-notes').value.trim();
+  if(!nom){toast('Le nom de pedigree est requis');return;}
+  if(!state.animaux)state.animaux=[];
+  const animal={
+    id:Date.now().toString(),nom,surnom,sexe,naiss,statut,robe,yeux,puce,affixe,notes,
+    parents:{pere,mere},
+    gp:{gpp,gmp,gpm,gmm},
+    agp:{agpp1,agpp2,agpm1,agpm2,agpat1,agpat2,agmat1,agmat2},
+    createdAt:new Date().toISOString()
+  };
+  state.animaux.unshift(animal);
+  saveState();toast('✅ Animal enregistré');
+  // Clear form
+  ['pa-nom','pa-surnom','pa-naiss','pa-robe','pa-yeux','pa-puce','pa-affixe','pa-pere','pa-mere','pa-gpp','pa-gmp','pa-gpm','pa-gmm','pa-agpp1','pa-agpp2','pa-agpm1','pa-agpm2','pa-agpat1','pa-agpat2','pa-agmat1','pa-agmat2','pa-notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  switchSub('ped-animaux');renderAnimaux();populateCertSelect();
+}
+
+function filterAnimaux(sex){
+  pedFilter=sex;
+  document.querySelectorAll('.ped-filter').forEach(b=>{b.classList.toggle('active',b.dataset.sex===sex);b.style.background=b.dataset.sex===sex?'var(--forest)':'';b.style.color=b.dataset.sex===sex?'white':'';});
+  renderAnimaux();
+}
+
+function renderAnimaux(){
+  const list=document.getElementById('ped-animaux-list');if(!list)return;
+  let animals=state.animaux||[];
+  if(pedFilter!=='all')animals=animals.filter(a=>a.sexe===pedFilter);
+  if(!animals.length){list.innerHTML='<div class="card"><p style="color:var(--muted);font-size:.83rem">Aucun animal enregistré.</p></div>';return;}
+  const statutBadge={actif:'badge-ok',retraite:'badge-muted',decede:'badge-alert',vendu:'badge-info'};
+  const statutLabel={actif:'Actif',retraite:'Retraite',decede:'Décédé',vendu:'Vendu'};
+  list.innerHTML=animals.map(a=>`
+    <div class="animal-card" onclick="openAnimalDetail('${a.id}')">
+      <div class="animal-av ${a.sexe}">${a.sexe==='M'?'♂':'♀'}</div>
+      <div style="flex:1">
+        <div style="font-family:'DM Serif Display',serif;font-size:.95rem;color:var(--forest)">${a.nom}</div>
+        <div style="font-size:.72rem;color:var(--muted)">${a.surnom?'"'+a.surnom+'" · ':''} ${a.naiss?fmtShort(a.naiss):''} ${a.robe?'· '+a.robe:''}</div>
+      </div>
+      <div style="text-align:right;display:flex;flex-direction:column;gap:.2rem;align-items:flex-end">
+        <span class="badge ${statutBadge[a.statut]||'badge-muted'}">${statutLabel[a.statut]||a.statut}</span>
+        ${a.parents?.pere?`<span style="font-size:.68rem;color:var(--muted)">🔵 ${a.parents.pere.split(' ').slice(0,2).join(' ')}</span>`:''}
+      </div>
+    </div>`).join('');
+}
+
+function openAnimalDetail(id){
+  const a=(state.animaux||[]).find(x=>x.id===id);if(!a)return;
+  // Pre-fill form for editing
+  document.getElementById('pa-nom').value=a.nom||'';
+  document.getElementById('pa-surnom').value=a.surnom||'';
+  document.getElementById('pa-sexe').value=a.sexe||'F';
+  document.getElementById('pa-naiss').value=a.naiss||'';
+  document.getElementById('pa-statut').value=a.statut||'actif';
+  document.getElementById('pa-robe').value=a.robe||'';
+  document.getElementById('pa-yeux').value=a.yeux||'';
+  document.getElementById('pa-puce').value=a.puce||'';
+  document.getElementById('pa-affixe').value=a.affixe||'';
+  document.getElementById('pa-pere').value=a.parents?.pere||'';
+  document.getElementById('pa-mere').value=a.parents?.mere||'';
+  document.getElementById('pa-gpp').value=a.gp?.gpp||'';
+  document.getElementById('pa-gmp').value=a.gp?.gmp||'';
+  document.getElementById('pa-gpm').value=a.gp?.gpm||'';
+  document.getElementById('pa-gmm').value=a.gp?.gmm||'';
+  document.getElementById('pa-agpp1').value=a.agp?.agpp1||'';
+  document.getElementById('pa-agpp2').value=a.agp?.agpp2||'';
+  document.getElementById('pa-agpm1').value=a.agp?.agpm1||'';
+  document.getElementById('pa-agpm2').value=a.agp?.agpm2||'';
+  document.getElementById('pa-agpat1').value=a.agp?.agpat1||'';
+  document.getElementById('pa-agpat2').value=a.agp?.agpat2||'';
+  document.getElementById('pa-agmat1').value=a.agp?.agmat1||'';
+  document.getElementById('pa-agmat2').value=a.agp?.agmat2||'';
+  document.getElementById('pa-notes').value=a.notes||'';
+  // Remove old animal and resave on next save
+  state.animaux=(state.animaux||[]).filter(x=>x.id!==id);
+  switchSub('ped-new');
+  toast('Fiche chargée — modifiez et sauvegardez');
+}
+
+function populateCertSelect(){
+  const sel=document.getElementById('cert-chiot');if(!sel)return;
+  sel.innerHTML='<option value="">— Choisir un animal —</option>';
+  (state.animaux||[]).forEach(a=>{
+    const o=document.createElement('option');o.value=a.id;o.textContent=a.nom+(a.surnom?' ('+a.surnom+')':'');sel.appendChild(o);
+  });
+}
+
+function genCertificat(){
+  const id=document.getElementById('cert-chiot').value;
+  if(!id){toast('Sélectionnez un animal');return;}
+  const a=(state.animaux||[]).find(x=>x.id===id);if(!a)return;
+
+  // Find siblings from portees
+  const portee=(state.portees||[]).find(p=>(p.chiots||[]).some(c=>c.nom===a.surnom||c.nom===a.nom));
+  const siblings=portee?(portee.chiots||[]).filter(c=>c.id!==id&&(c.nom!==a.nom)):[];
+
+  const preview=document.getElementById('cert-preview');
+  const certDiv=document.getElementById('cert-content');
+  preview.style.display='block';
+
+  certDiv.innerHTML=`
+    <!-- HEADER -->
+    <div class="cert-header">
+      <div style="font-size:3rem;margin-bottom:.3rem;filter:sepia(40%)">🐾</div>
+      <div style="font-size:.75rem;color:var(--muted);letter-spacing:.15em;text-transform:uppercase;margin-bottom:.3rem">Élevage · Affixe officiel</div>
+      <div class="cert-title">L\'Orée des Moonskys</div>
+      <div class="cert-subtitle">Élevage de Pomsky · 46 chemin du Ribarot · 31700 Daux</div>
+      <div style="font-size:.75rem;color:var(--muted);margin-top:.3rem">Certificat de Généalogie Interne · Non officiel LOF</div>
+    </div>
+
+    <!-- ANIMAL SUBJECT -->
+    <div class="cert-animal">
+      <div style="font-size:.8rem;color:var(--muted);margin-bottom:.2rem">${a.sexe==='M'?'♂ Mâle':'♀ Femelle'}</div>
+      <div class="cert-animal-name">${a.nom}</div>
+      ${a.surnom?`<div style="font-size:.9rem;color:var(--muted)">"${a.surnom}"</div>`:''}
+      <div style="display:flex;justify-content:center;gap:1rem;margin-top:.5rem;font-size:.8rem;flex-wrap:wrap">
+        ${a.naiss?`<span>📅 Né(e) le ${fmtShort(a.naiss)}</span>`:''}
+        ${a.robe?`<span>🎨 ${a.robe}</span>`:''}
+        ${a.yeux?`<span>👁 ${a.yeux}</span>`:''}
+        ${a.puce?`<span>🔖 ${a.puce}</span>`:''}
+      </div>
+    </div>
+
+    <!-- PEDIGREE TREE -->
+    <h3 style="margin:.8rem 0 .5rem;text-align:center;color:var(--forest)">Arbre Généalogique</h3>
+    <div style="font-size:.65rem;display:flex;gap:2px;overflow-x:auto;min-width:0">
+
+      <!-- Col 1: Subject -->
+      <div style="display:flex;flex-direction:column;justify-content:center;min-width:120px;max-width:140px">
+        <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:3px">Titulaire</div>
+        <div class="ped-box subject" style="text-align:center">
+          <div class="ped-name">${a.nom}</div>
+          ${a.naiss?`<div class="ped-meta">${fmtShort(a.naiss)}</div>`:''}
+        </div>
+      </div>
+
+      <!-- Col 2: Parents -->
+      <div style="display:flex;flex-direction:column;justify-content:space-around;min-width:130px;max-width:160px">
+        <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:3px">Parents</div>
+        <div class="ped-box male"><div class="ped-name">${a.parents?.pere||'—'}</div><div class="ped-meta">Père</div></div>
+        <div class="ped-box female"><div class="ped-name">${a.parents?.mere||'—'}</div><div class="ped-meta">Mère</div></div>
+      </div>
+
+      <!-- Col 3: Grands-parents -->
+      <div style="display:flex;flex-direction:column;justify-content:space-around;min-width:140px;max-width:170px">
+        <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:3px">Grands-Parents</div>
+        <div class="ped-box male"><div class="ped-name">${a.gp?.gpp||'—'}</div><div class="ped-meta">GP Pat.</div></div>
+        <div class="ped-box female"><div class="ped-name">${a.gp?.gmp||'—'}</div><div class="ped-meta">GM Pat.</div></div>
+        <div class="ped-box male"><div class="ped-name">${a.gp?.gpm||'—'}</div><div class="ped-meta">GP Mat.</div></div>
+        <div class="ped-box female"><div class="ped-name">${a.gp?.gmm||'—'}</div><div class="ped-meta">GM Mat.</div></div>
+      </div>
+
+      <!-- Col 4: Arrière-grands-parents -->
+      <div style="display:flex;flex-direction:column;justify-content:space-around;min-width:150px;max-width:180px">
+        <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:3px">Arrière-Grands-Parents</div>
+        ${[
+          {name:a.agp?.agpp1,label:'AGP PP',sex:'M'},
+          {name:a.agp?.agpp2,label:'AGM PP',sex:'F'},
+          {name:a.agp?.agpm1,label:'AGP MP',sex:'M'},
+          {name:a.agp?.agpm2,label:'AGM MP',sex:'F'},
+          {name:a.agp?.agpat1,label:'AGP PM',sex:'M'},
+          {name:a.agp?.agpat2,label:'AGM PM',sex:'F'},
+          {name:a.agp?.agmat1,label:'AGP MM',sex:'M'},
+          {name:a.agp?.agmat2,label:'AGM MM',sex:'F'},
+        ].map(x=>`<div class="ped-box ${x.sex==='M'?'male':'female'}"><div class="ped-name">${x.name||'—'}</div><div class="ped-meta">${x.label}</div></div>`).join('')}
+      </div>
+    </div>
+
+    <!-- SIBLINGS -->
+    ${siblings.length?`
+    <div style="margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
+      <h3 style="margin-bottom:.5rem;color:var(--forest)">Frères et Sœurs de portée</h3>
+      <div class="cert-siblings">${siblings.map(s=>`<span class="cert-sibling-chip">${s.sexe==='M'?'♂':'♀'} ${s.nom||'?'}</span>`).join('')}</div>
+    </div>`:''}
+
+    <!-- NOTES -->
+    ${a.notes?`<div style="margin-top:.8rem;padding-top:.7rem;border-top:1px solid var(--border);font-size:.8rem;color:var(--muted)"><strong>Notes & Tests santé :</strong> ${a.notes}</div>`:''}
+
+    <!-- FOOTER -->
+    <div style="margin-top:1rem;padding-top:.8rem;border-top:2px solid var(--forest);text-align:center;font-size:.72rem;color:var(--muted)">
+      <div>Certificat émis par <strong>L'Orée des Moonskys</strong> · Document interne non officiel</div>
+      <div style="margin-top:.2rem">Élevage de Pomsky œuvrant à la reconnaissance de cette nouvelle race · Andorra · ${new Date().toLocaleDateString('fr-FR')}</div>
+      <div style="margin-top:.15rem">🔵 Lignée paternelle &nbsp;|&nbsp; 🔴 Lignée maternelle &nbsp;|&nbsp; AGP = Arrière-Grand-Parent</div>
+    </div>`;
+
+  preview.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
 // ══════ INIT ══════
 (function init(){
   loadState();
@@ -949,6 +1301,10 @@ function renderCalendar(){
   document.getElementById('btn-chg-pin').addEventListener('click',changePin);
   document.getElementById('btn-save-email').addEventListener('click',saveEmail);
   document.querySelectorAll('[data-close]').forEach(btn=>btn.addEventListener('click',()=>closeM(btn.dataset.close)));
+  // Pedigree
+  document.getElementById('btn-save-animal').addEventListener('click',saveAnimal);
+  document.getElementById('btn-gen-cert').addEventListener('click',genCertificat);
+  document.querySelectorAll('.ped-filter').forEach(btn=>btn.addEventListener('click',()=>filterAnimaux(btn.dataset.sex)));
 })();
 </script>
 </body>
