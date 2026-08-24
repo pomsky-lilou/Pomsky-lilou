@@ -557,7 +557,7 @@ function doLogin(){
   errEl.style.display='none';
   const acc=(state.accounts||[]).find(a=>a.id===id||a.name.toLowerCase()===id);
   if(!acc){errEl.textContent='Identifiant introuvable.';errEl.style.display='block';return;}
-  if(acc.role!=='admin'){errEl.textContent='Accès réservé à l'éleveur.';errEl.style.display='block';return;}
+  if(acc.role!=='admin'){errEl.textContent='Accès réservé à l\'éleveur.';errEl.style.display='block';return;}
   if(acc.pin!==pin){errEl.textContent='PIN incorrect.';errEl.style.display='block';return;}
   state.currentUser=acc;
   showScreen('admin');
