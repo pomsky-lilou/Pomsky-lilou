@@ -199,7 +199,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.7a.4 — 25 août 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a.5 — 25 août 2026</p>
     </div>
   </div>
 </div>
@@ -208,7 +208,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
 <div id="screen-admin" class="screen">
   <div class="topbar">
     <div class="topbar-brand"><span style="font-size:1.2rem">🌸</span><h2>Pomsky de Lilou</h2></div>
-    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.4</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
+    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.5</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
   </div>
   <nav class="bottom-nav">
     <button class="active" data-panel="tableau"><span class="ni">📊</span>Tableau</button>
@@ -914,7 +914,7 @@ function renderPortees(){
     const nxtVerm=(p.verm||[]).find(d=>d>=t);
     return `<div class="card" style="cursor:pointer" onclick="openPorteeModal('${p.id}')">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.5rem">
-        <div><div style="font-family:'DM Serif Display',serif;font-size:.95rem;color:var(--forest)">🍼 ${p.femelle} × ${p.male}</div>
+        <div><div style="font-family:DM Serif Display,serif;font-size:.95rem;color:var(--forest)">🍼 ${p.femelle} × ${p.male}</div>
         <div style="font-size:.72rem;color:var(--muted)">Naissance : ${fmtShort(p.naissance)} · ${age}j</div></div>
         <div style="text-align:right"><span class="badge badge-ok">${dispos} dispo</span><div style="font-size:.7rem;color:var(--muted)">${(p.chiots||[]).length} nés</div></div>
       </div>
@@ -1368,7 +1368,7 @@ function renderAnimaux(){
     return '<div class="animal-card" onclick="openAnimalDetail(\'' + a.id + '\')">'
       + '<div class="animal-av ' + (a.sexe||'F') + '">' + (a.sexe==='M'?'♂':'♀') + '</div>'
       + '<div style="flex:1">'
-      + '<div style="font-family:'DM Serif Display',serif;font-size:.95rem;color:var(--forest)">' + (a.nom||'—') + '</div>'
+      + '<div style="font-family:DM Serif Display,serif;font-size:.95rem;color:var(--forest)">' + (a.nom||'\u2014') + '</div>'
       + '<div style="font-size:.72rem;color:var(--muted)">' + meta + '</div>'
       + (a.autoCreated ? '<span class="badge badge-info" style="font-size:.6rem">Auto · À compléter</span>' : '')
       + '</div>'
