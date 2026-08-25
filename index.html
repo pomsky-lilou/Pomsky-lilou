@@ -1171,7 +1171,7 @@ function populatePedigreeSelects() {
     const sel = document.getElementById(id);
     if (!sel) return;
     const currentVal = sel.value;
-    sel.innerHTML = '<option value="">— Choisir dans l'élevage —</option>';
+    sel.innerHTML = '<option value="">— Choisir dans l\'élevage —</option>';
     // Sort: males first for père/GP, females first for mère/GM
     const isMale = id==='pa-pere'||id==='pa-gpp'||id==='pa-gpm'||id==='pa-agpp1'||id==='pa-agpm1'||id==='pa-agpat1'||id==='pa-agmat1';
     const sorted = [...animals].sort(function(a,b) {
