@@ -199,7 +199,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.6b — 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a — 25 août 2026</p>
     </div>
   </div>
 </div>
@@ -486,10 +486,14 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
 
       <!-- Liste animaux -->
       <div id="ped-animaux" class="subtab active">
-        <div style="display:flex;gap:.4rem;margin-bottom:.6rem;flex-wrap:wrap">
+        <div style="display:flex;gap:.4rem;margin-bottom:.6rem;flex-wrap:wrap;align-items:center">
           <button class="btn btn-secondary btn-sm ped-filter active" data-sex="all">Tous</button>
           <button class="btn btn-secondary btn-sm ped-filter" data-sex="F">♀ Femelles</button>
           <button class="btn btn-secondary btn-sm ped-filter" data-sex="M">♂ Mâles</button>
+          <button class="btn btn-info btn-sm" id="btn-sync-ped" style="margin-left:auto">🔄 Sync depuis Bébés</button>
+        </div>
+        <div style="background:#e8f4fd;border:1.5px solid #aed6f1;border-radius:8px;padding:.6rem .9rem;margin-bottom:.6rem;font-size:.8rem;color:#1a5276">
+          💡 Les chiots ajoutés dans <strong>Bébés</strong> créent automatiquement leur fiche Pedigree. Complétez ensuite robe, puce et grands-parents.
         </div>
         <div id="ped-animaux-list"></div>
       </div>
@@ -846,12 +850,16 @@ function renderChiotsForm(pid){
   const portee=(state.portees||[]).find(p=>p.id===pid);if(!portee)return;
   const list=document.getElementById('chiots-form-list');if(!list)return;
   list.innerHTML=(portee.chiots||[]).map((c,i)=>`<div class="chiot-card"><div class="chiot-av ${c.sexe==='M'?'male':'female'}">${c.sexe==='M'?'♂':'♀'}</div><div style="flex:1"><div style="font-size:.86rem;font-weight:600">${c.nom||'#'+(i+1)}</div><div style="font-size:.7rem;color:var(--muted)">${c.couleurYeux}</div></div><span class="badge ${c.vendu?'badge-muted':'badge-ok'}">${c.vendu?'Vendu':'Dispo'}</span></div>`).join('')||'<p style="color:var(--muted);font-size:.83rem">Aucun chiot saisi.</p>';
-  document.getElementById('btn-add-chiot').onclick=()=>{
+  document.getElementById('btn-add-chiot').onclick=function(){
     const nom=prompt('Nom/numéro provisoire :');if(!nom)return;
     const sexe=confirm('Mâle ?')?'M':'F';
     const yeux=prompt('Couleur des yeux :')||'—';
-    portee.chiots.push({id:Date.now().toString(),nom,sexe,couleurYeux:yeux,vendu:false});
+    const chiotId=Date.now().toString();
+    portee.chiots.push({id:chiotId,nom,sexe,couleurYeux:yeux,vendu:false});
+    // Auto-create pedigree fiche
+    autoCreatePedigreeFiche(chiotId, nom, sexe, yeux, portee);
     saveState();renderChiotsForm(pid);renderPortees();populateChiotSel();
+    toast('✅ Chiot ajouté + fiche pedigree créée automatiquement');
   };
 }
 function renderPortees(){
@@ -1062,6 +1070,72 @@ function renderCalendar(){
 // ══════ PEDIGREE ══════
 let pedFilter='all';
 
+function autoCreatePedigreeFiche(chiotId, nom, sexe, yeux, portee) {
+  if (!state.animaux) state.animaux = [];
+  // Check if fiche already exists for this chiot
+  const existing = state.animaux.find(a => a.chiotId === chiotId);
+  if (existing) return;
+  // Get parent info from saillie
+  const saillie = (state.saillies||[]).find(s => s.id === portee.saillieId);
+  const pere = saillie ? saillie.male : '';
+  const mere = saillie ? saillie.femelle : '';
+  // Get GP from parent pedigree fiches if they exist
+  const fichePere = state.animaux.find(a => a.surnom === pere || a.nom.includes(pere));
+  const ficheMere = state.animaux.find(a => a.surnom === mere || a.nom.includes(mere));
+  const fiche = {
+    id: 'auto_' + chiotId,
+    chiotId: chiotId,
+    porteeId: portee.id,
+    nom: nom + " de L'Orée des Moonskys",
+    surnom: nom,
+    sexe: sexe,
+    naiss: portee.naissance,
+    statut: 'actif',
+    robe: '',
+    yeux: yeux !== '—' ? yeux : '',
+    puce: '',
+    affixe: "L'Orée des Moonskys",
+    notes: '',
+    parents: { pere: pere ? pere + " de L'Orée des Moonskys" : '', mere: mere ? mere + " de L'Orée des Moonskys" : '' },
+    gp: {
+      gpp: fichePere?.parents?.pere || '',
+      gmp: fichePere?.parents?.mere || '',
+      gpm: ficheMere?.parents?.pere || '',
+      gmm: ficheMere?.parents?.mere || '',
+    },
+    agp: {
+      agpp1: fichePere?.gp?.gpp || '',
+      agpp2: fichePere?.gp?.gmp || '',
+      agpm1: fichePere?.gp?.gpm || '',
+      agpm2: fichePere?.gp?.gmm || '',
+      agpat1: ficheMere?.gp?.gpp || '',
+      agpat2: ficheMere?.gp?.gmp || '',
+      agmat1: ficheMere?.gp?.gpm || '',
+      agmat2: ficheMere?.gp?.gmm || '',
+    },
+    autoCreated: true,
+    createdAt: new Date().toISOString(),
+  };
+  state.animaux.unshift(fiche);
+}
+
+function syncPorteesToPedigree() {
+  // Sync all existing chiots that don't have a pedigree fiche yet
+  if (!state.animaux) state.animaux = [];
+  let count = 0;
+  (state.portees||[]).filter(p=>p.statut==='active').forEach(portee => {
+    (portee.chiots||[]).forEach(chiot => {
+      const existing = state.animaux.find(a => a.chiotId === chiot.id);
+      if (!existing) {
+        autoCreatePedigreeFiche(chiot.id, chiot.nom, chiot.sexe, chiot.couleurYeux||'—', portee);
+        count++;
+      }
+    });
+  });
+  if (count > 0) { saveState(); toast('✅ ' + count + ' fiche(s) pedigree synchronisée(s)'); }
+  else { toast('Toutes les fiches sont déjà à jour'); }
+}
+
 function saveAnimal(){
   const nom=document.getElementById('pa-nom').value.trim();
   const surnom=document.getElementById('pa-surnom').value.trim();
@@ -1122,6 +1196,7 @@ function renderAnimaux(){
       <div style="flex:1">
         <div style="font-family:'DM Serif Display',serif;font-size:.95rem;color:var(--forest)">${a.nom}</div>
         <div style="font-size:.72rem;color:var(--muted)">${a.surnom?'"'+a.surnom+'" · ':''} ${a.naiss?fmtShort(a.naiss):''} ${a.robe?'· '+a.robe:''}</div>
+        ${a.autoCreated?'<span class="badge badge-info" style="font-size:.6rem">Auto · À compléter</span>':''}
       </div>
       <div style="text-align:right;display:flex;flex-direction:column;gap:.2rem;align-items:flex-end">
         <span class="badge ${statutBadge[a.statut]||'badge-muted'}">${statutLabel[a.statut]||a.statut}</span>
@@ -1304,6 +1379,7 @@ function genCertificat(){
   // Pedigree
   document.getElementById('btn-save-animal').addEventListener('click',saveAnimal);
   document.getElementById('btn-gen-cert').addEventListener('click',genCertificat);
+  document.getElementById('btn-sync-ped').addEventListener('click',syncPorteesToPedigree);
   document.querySelectorAll('.ped-filter').forEach(btn=>btn.addEventListener('click',()=>filterAnimaux(btn.dataset.sex)));
 })();
 </script>
