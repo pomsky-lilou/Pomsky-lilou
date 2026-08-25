@@ -199,7 +199,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.7a — 25 août 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a.3 — 25 août 2026</p>
     </div>
   </div>
 </div>
@@ -208,7 +208,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
 <div id="screen-admin" class="screen">
   <div class="topbar">
     <div class="topbar-brand"><span style="font-size:1.2rem">🌸</span><h2>Pomsky de Lilou</h2></div>
-    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
+    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.3</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
   </div>
   <nav class="bottom-nav">
     <button class="active" data-panel="tableau"><span class="ni">📊</span>Tableau</button>
@@ -528,22 +528,47 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
           </div>
           <div style="background:var(--parchment);border-radius:var(--radius-sm);padding:.7rem;margin:.6rem 0">
             <h3 style="margin-bottom:.5rem">Parents</h3>
+            <p style="font-size:.72rem;color:var(--muted);margin-bottom:.5rem">Choisissez dans la liste ou saisissez un nom externe à l'élevage.</p>
             <div class="form-row">
-              <div class="field"><label>🔵 Père (nom pedigree)</label><input type="text" id="pa-pere" placeholder="Nom du père"></div>
-              <div class="field"><label>🔴 Mère (nom pedigree)</label><input type="text" id="pa-mere" placeholder="Nom de la mère"></div>
+              <div class="field"><label>🔵 Père</label>
+                <select id="pa-pere" onchange="autoFillGP()"><option value="">— Choisir ou saisir —</option></select>
+                <input type="text" id="pa-pere-libre" placeholder="Ou nom externe..." style="margin-top:.3rem;padding:.45rem .7rem;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:.82rem;width:100%;background:var(--cream)">
+              </div>
+              <div class="field"><label>🔴 Mère</label>
+                <select id="pa-mere" onchange="autoFillGP()"><option value="">— Choisir ou saisir —</option></select>
+                <input type="text" id="pa-mere-libre" placeholder="Ou nom externe..." style="margin-top:.3rem;padding:.45rem .7rem;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:.82rem;width:100%;background:var(--cream)">
+              </div>
             </div>
           </div>
           <div style="background:var(--parchment);border-radius:var(--radius-sm);padding:.7rem;margin:.3rem 0 .6rem">
-            <h3 style="margin-bottom:.5rem">Grands-parents</h3>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+              <h3>Grands-parents</h3>
+              <button type="button" class="btn btn-info btn-sm" onclick="autoFillGP()">🔄 Auto-remplir</button>
+            </div>
             <div class="form-row">
-              <div class="field"><label>🔵 GP paternel</label><input type="text" id="pa-gpp" placeholder="Grand-père paternel"></div>
-              <div class="field"><label>🔴 GM paternelle</label><input type="text" id="pa-gmp" placeholder="Grand-mère paternelle"></div>
-              <div class="field"><label>🔵 GP maternel</label><input type="text" id="pa-gpm" placeholder="Grand-père maternel"></div>
-              <div class="field"><label>🔴 GM maternelle</label><input type="text" id="pa-gmm" placeholder="Grand-mère maternelle"></div>
+              <div class="field"><label>🔵 GP Paternel</label>
+                <select id="pa-gpp"><option value="">— Choisir —</option></select>
+                <input type="text" id="pa-gpp-libre" placeholder="Ou nom externe..." style="margin-top:.3rem;padding:.45rem .7rem;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:.82rem;width:100%;background:var(--cream)">
+              </div>
+              <div class="field"><label>🔴 GM Paternelle</label>
+                <select id="pa-gmp"><option value="">— Choisir —</option></select>
+                <input type="text" id="pa-gmp-libre" placeholder="Ou nom externe..." style="margin-top:.3rem;padding:.45rem .7rem;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:.82rem;width:100%;background:var(--cream)">
+              </div>
+              <div class="field"><label>🔵 GP Maternel</label>
+                <select id="pa-gpm"><option value="">— Choisir —</option></select>
+                <input type="text" id="pa-gpm-libre" placeholder="Ou nom externe..." style="margin-top:.3rem;padding:.45rem .7rem;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:.82rem;width:100%;background:var(--cream)">
+              </div>
+              <div class="field"><label>🔴 GM Maternelle</label>
+                <select id="pa-gmm"><option value="">— Choisir —</option></select>
+                <input type="text" id="pa-gmm-libre" placeholder="Ou nom externe..." style="margin-top:.3rem;padding:.45rem .7rem;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:.82rem;width:100%;background:var(--cream)">
+              </div>
             </div>
           </div>
           <div style="background:var(--parchment);border-radius:var(--radius-sm);padding:.7rem;margin:.3rem 0 .6rem">
-            <h3 style="margin-bottom:.5rem">Arrière-grands-parents</h3>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+              <h3>Arrière-grands-parents</h3>
+              <span style="font-size:.7rem;color:var(--muted)">Auto-remplis depuis les GP</span>
+            </div>
             <div class="form-row">
               <div class="field"><label>AGP Pat-Pat</label><input type="text" id="pa-agpp1" placeholder="Arrière-GP"></div>
               <div class="field"><label>AGM Pat-Pat</label><input type="text" id="pa-agpp2" placeholder="Arrière-GM"></div>
@@ -674,7 +699,9 @@ function switchSub(id){
   par.querySelectorAll('.subtab').forEach(s=>{s.style.display='none';s.classList.remove('active');});
   par.querySelectorAll('.mod-tab').forEach(t=>t.classList.remove('active'));
   const el=document.getElementById(id);if(el){el.style.display='block';el.classList.add('active');}
-  const tab=par.querySelector(`.mod-tab[data-sub="${id}"]`);if(tab)tab.classList.add('active');
+  const tab=par.querySelector('.mod-tab[data-sub="'+id+'"]');if(tab)tab.classList.add('active');
+  // Populate pedigree selects when opening the form
+  if (id==='ped-new') setTimeout(populatePedigreeSelects, 50);
 }
 function renderPanel(n){
   if(n==='tableau')renderTableau();
@@ -1136,6 +1163,112 @@ function syncPorteesToPedigree() {
   else { toast('Toutes les fiches sont déjà à jour'); }
 }
 
+function populatePedigreeSelects() {
+  // Populate all parent/GP selects with animals from pedigree database
+  const animals = state.animaux || [];
+  const selectIds = ['pa-pere','pa-mere','pa-gpp','pa-gmp','pa-gpm','pa-gmm'];
+  selectIds.forEach(function(id) {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const currentVal = sel.value;
+    sel.innerHTML = '<option value="">— Choisir dans l'élevage —</option>';
+    // Sort: males first for père/GP, females first for mère/GM
+    const isMale = id==='pa-pere'||id==='pa-gpp'||id==='pa-gpm'||id==='pa-agpp1'||id==='pa-agpm1'||id==='pa-agpat1'||id==='pa-agmat1';
+    const sorted = [...animals].sort(function(a,b) {
+      if (isMale) { if(a.sexe==='M'&&b.sexe!=='M') return -1; if(b.sexe==='M'&&a.sexe!=='M') return 1; }
+      else { if(a.sexe==='F'&&b.sexe!=='F') return -1; if(b.sexe==='F'&&a.sexe!=='F') return 1; }
+      return a.nom.localeCompare(b.nom);
+    });
+    sorted.forEach(function(a) {
+      const o = document.createElement('option');
+      o.value = a.nom;
+      o.textContent = (a.sexe==='M'?'♂ ':'♀ ') + a.nom + (a.surnom?' ('+a.surnom+')':'');
+      sel.appendChild(o);
+    });
+    if (currentVal) sel.value = currentVal;
+  });
+}
+
+function getAnimalName(id) {
+  // Returns nom from select value or libre text input
+  const sel = document.getElementById(id);
+  const libre = document.getElementById(id + '-libre');
+  if (sel && sel.value) return sel.value;
+  if (libre && libre.value.trim()) return libre.value.trim();
+  return '';
+}
+
+function autoFillGP() {
+  // When père is selected, auto-fill GP from his pedigree fiche
+  const pereNom = getAnimalName('pa-pere');
+  const mereNom = getAnimalName('pa-mere');
+  const animals = state.animaux || [];
+
+  const fichePere = animals.find(function(a){ return a.nom === pereNom || a.surnom === pereNom; });
+  const ficheMere = animals.find(function(a){ return a.nom === mereNom || a.surnom === mereNom; });
+
+  if (fichePere) {
+    // GP paternels depuis la fiche du père
+    setSelectOrLibre('pa-gpp', fichePere.parents?.pere || fichePere.gp?.gpp || '');
+    setSelectOrLibre('pa-gmp', fichePere.parents?.mere || fichePere.gp?.gmp || '');
+    // AGP depuis les GP du père
+    if (fichePere.parents?.pere) {
+      const ficheGPP = animals.find(function(a){ return a.nom === fichePere.parents.pere; });
+      if (ficheGPP) {
+        setVal('pa-agpp1', ficheGPP.parents?.pere || '');
+        setVal('pa-agpp2', ficheGPP.parents?.mere || '');
+      }
+    }
+    if (fichePere.parents?.mere) {
+      const ficheGMP = animals.find(function(a){ return a.nom === fichePere.parents.mere; });
+      if (ficheGMP) {
+        setVal('pa-agpm1', ficheGMP.parents?.pere || '');
+        setVal('pa-agpm2', ficheGMP.parents?.mere || '');
+      }
+    }
+  }
+
+  if (ficheMere) {
+    // GP maternels depuis la fiche de la mère
+    setSelectOrLibre('pa-gpm', ficheMere.parents?.pere || ficheMere.gp?.gpm || '');
+    setSelectOrLibre('pa-gmm', ficheMere.parents?.mere || ficheMere.gp?.gmm || '');
+    // AGP depuis les GP de la mère
+    if (ficheMere.parents?.pere) {
+      const ficheGPM = animals.find(function(a){ return a.nom === ficheMere.parents.pere; });
+      if (ficheGPM) {
+        setVal('pa-agpat1', ficheGPM.parents?.pere || '');
+        setVal('pa-agpat2', ficheGPM.parents?.mere || '');
+      }
+    }
+    if (ficheMere.parents?.mere) {
+      const ficheGMM = animals.find(function(a){ return a.nom === ficheMere.parents.mere; });
+      if (ficheGMM) {
+        setVal('pa-agmat1', ficheGMM.parents?.pere || '');
+        setVal('pa-agmat2', ficheGMM.parents?.mere || '');
+      }
+    }
+  }
+}
+
+function setSelectOrLibre(selectId, val) {
+  if (!val) return;
+  const sel = document.getElementById(selectId);
+  const libre = document.getElementById(selectId + '-libre');
+  if (sel) {
+    // Try to find in options
+    let found = false;
+    for (let i = 0; i < sel.options.length; i++) {
+      if (sel.options[i].value === val) { sel.value = val; found = true; break; }
+    }
+    if (!found && libre) { libre.value = val; }
+  }
+}
+
+function setVal(id, val) {
+  const el = document.getElementById(id);
+  if (el && val) el.value = val;
+}
+
 function saveAnimal(){
   const nom=document.getElementById('pa-nom').value.trim();
   const surnom=document.getElementById('pa-surnom').value.trim();
@@ -1146,12 +1279,12 @@ function saveAnimal(){
   const yeux=document.getElementById('pa-yeux').value.trim();
   const puce=document.getElementById('pa-puce').value.trim();
   const affixe=document.getElementById('pa-affixe').value.trim();
-  const pere=document.getElementById('pa-pere').value.trim();
-  const mere=document.getElementById('pa-mere').value.trim();
-  const gpp=document.getElementById('pa-gpp').value.trim();
-  const gmp=document.getElementById('pa-gmp').value.trim();
-  const gpm=document.getElementById('pa-gpm').value.trim();
-  const gmm=document.getElementById('pa-gmm').value.trim();
+  const pere=getAnimalName('pa-pere');
+  const mere=getAnimalName('pa-mere');
+  const gpp=getAnimalName('pa-gpp');
+  const gmp=getAnimalName('pa-gmp');
+  const gpm=getAnimalName('pa-gpm');
+  const gmm=getAnimalName('pa-gmm');
   const agpp1=document.getElementById('pa-agpp1').value.trim();
   const agpp2=document.getElementById('pa-agpp2').value.trim();
   const agpm1=document.getElementById('pa-agpm1').value.trim();
@@ -1173,7 +1306,7 @@ function saveAnimal(){
   state.animaux.unshift(animal);
   saveState();toast('✅ Animal enregistré');
   // Clear form
-  ['pa-nom','pa-surnom','pa-naiss','pa-robe','pa-yeux','pa-puce','pa-affixe','pa-pere','pa-mere','pa-gpp','pa-gmp','pa-gpm','pa-gmm','pa-agpp1','pa-agpp2','pa-agpm1','pa-agpm2','pa-agpat1','pa-agpat2','pa-agmat1','pa-agmat2','pa-notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['pa-nom','pa-surnom','pa-naiss','pa-robe','pa-yeux','pa-puce','pa-affixe','pa-pere','pa-pere-libre','pa-mere','pa-mere-libre','pa-gpp','pa-gpp-libre','pa-gmp','pa-gmp-libre','pa-gpm','pa-gpm-libre','pa-gmm','pa-gmm-libre','pa-agpp1','pa-agpp2','pa-agpm1','pa-agpm2','pa-agpat1','pa-agpat2','pa-agmat1','pa-agmat2','pa-notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   switchSub('ped-animaux');renderAnimaux();populateCertSelect();
 }
 
@@ -1235,6 +1368,16 @@ function openAnimalDetail(id){
   // Remove old animal and resave on next save
   state.animaux=(state.animaux||[]).filter(x=>x.id!==id);
   switchSub('ped-new');
+  // Populate selects then set values
+  setTimeout(function() {
+    populatePedigreeSelects();
+    setSelectOrLibre('pa-pere', a.parents?.pere||'');
+    setSelectOrLibre('pa-mere', a.parents?.mere||'');
+    setSelectOrLibre('pa-gpp',  a.gp?.gpp||'');
+    setSelectOrLibre('pa-gmp',  a.gp?.gmp||'');
+    setSelectOrLibre('pa-gpm',  a.gp?.gpm||'');
+    setSelectOrLibre('pa-gmm',  a.gp?.gmm||'');
+  }, 100);
   toast('Fiche chargée — modifiez et sauvegardez');
 }
 
