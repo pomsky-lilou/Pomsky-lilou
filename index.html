@@ -491,6 +491,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
           <button class="btn btn-secondary btn-sm ped-filter" data-sex="F">♀ Femelles</button>
           <button class="btn btn-secondary btn-sm ped-filter" data-sex="M">♂ Mâles</button>
           <button class="btn btn-info btn-sm" id="btn-sync-ped" style="margin-left:auto">🔄 Sync depuis Bébés</button>
+          <span id="ped-count" style="font-size:.75rem;color:var(--muted);font-family:'DM Mono',monospace"></span>
         </div>
         <div style="background:#e8f4fd;border:1.5px solid #aed6f1;border-radius:8px;padding:.6rem .9rem;margin-bottom:.6rem;font-size:.8rem;color:#1a5276">
           💡 Les chiots ajoutés dans <strong>Bébés</strong> créent automatiquement leur fiche Pedigree. Complétez ensuite robe, puce et grands-parents.
@@ -583,7 +584,10 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
             </div>
           </div>
           <div class="field" style="margin-bottom:.6rem"><label>Titres / Résultats / Notes santé</label><textarea id="pa-notes" placeholder="Tests ADN, résultats expo, certificats santé..."></textarea></div>
-          <button class="btn btn-ok" id="btn-save-animal">💾 Enregistrer</button>
+          <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+            <button class="btn btn-ok" id="btn-save-animal">💾 Enregistrer</button>
+            <button class="btn btn-secondary btn-sm" id="btn-cancel-animal">✕ Annuler</button>
+          </div>
         </div>
       </div>
 
@@ -701,7 +705,17 @@ function switchSub(id){
   const el=document.getElementById(id);if(el){el.style.display='block';el.classList.add('active');}
   const tab=par.querySelector('.mod-tab[data-sub="'+id+'"]');if(tab)tab.classList.add('active');
   // Populate pedigree selects when opening the form
-  if (id==='ped-new') setTimeout(populatePedigreeSelects, 50);
+  if (id==='ped-new') {
+    setTimeout(populatePedigreeSelects, 50);
+  }
+  // Si on va sur "Animaux", annuler l'édition en cours
+  if (id==='ped-animaux') {
+    if (_editingAnimalId) {
+      _editingAnimalId = null;
+      const btn = document.getElementById('btn-save-animal');
+      if (btn) btn.textContent = '💾 Enregistrer';
+    }
+  }
 }
 function renderPanel(n){
   if(n==='tableau')renderTableau();
@@ -1303,10 +1317,25 @@ function saveAnimal(){
     agp:{agpp1,agpp2,agpm1,agpm2,agpat1,agpat2,agmat1,agmat2},
     createdAt:new Date().toISOString()
   };
-  state.animaux.unshift(animal);
-  saveState();toast('✅ Animal enregistré');
-  // Clear form
-  ['pa-nom','pa-surnom','pa-naiss','pa-robe','pa-yeux','pa-puce','pa-affixe','pa-pere','pa-pere-libre','pa-mere','pa-mere-libre','pa-gpp','pa-gpp-libre','pa-gmp','pa-gmp-libre','pa-gpm','pa-gpm-libre','pa-gmm','pa-gmm-libre','pa-agpp1','pa-agpp2','pa-agpm1','pa-agpm2','pa-agpat1','pa-agpat2','pa-agmat1','pa-agmat2','pa-notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  if (_editingAnimalId) {
+    // Mode édition : on remplace la fiche existante
+    animal.id          = _editingAnimalId;
+    const existing     = (state.animaux||[]).find(x=>x.id===_editingAnimalId);
+    animal.createdAt   = existing?.createdAt || animal.createdAt;
+    animal.chiotId     = existing?.chiotId;
+    animal.autoCreated = false;
+    state.animaux      = (state.animaux||[]).map(function(x){ return x.id===_editingAnimalId ? animal : x; });
+    _editingAnimalId   = null;
+    const btn=document.getElementById('btn-save-animal');
+    if(btn) btn.textContent='💾 Enregistrer';
+    saveState(); toast('✅ Fiche mise à jour');
+  } else {
+    // Nouvelle fiche
+    state.animaux.unshift(animal);
+    saveState(); toast('✅ Animal enregistré');
+  }
+  // Vider le formulaire
+  ['pa-nom','pa-surnom','pa-naiss','pa-robe','pa-yeux','pa-puce','pa-affixe','pa-pere','pa-pere-libre','pa-mere','pa-mere-libre','pa-gpp','pa-gpp-libre','pa-gmp','pa-gmp-libre','pa-gpm','pa-gpm-libre','pa-gmm','pa-gmm-libre','pa-agpp1','pa-agpp2','pa-agpm1','pa-agpm2','pa-agpat1','pa-agpat2','pa-agmat1','pa-agmat2','pa-notes'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
   switchSub('ped-animaux');renderAnimaux();populateCertSelect();
 }
 
@@ -1323,24 +1352,38 @@ function renderAnimaux(){
   if(!animals.length){list.innerHTML='<div class="card"><p style="color:var(--muted);font-size:.83rem">Aucun animal enregistré.</p></div>';return;}
   const statutBadge={actif:'badge-ok',retraite:'badge-muted',decede:'badge-alert',vendu:'badge-info'};
   const statutLabel={actif:'Actif',retraite:'Retraite',decede:'Décédé',vendu:'Vendu'};
-  list.innerHTML=animals.map(a=>`
-    <div class="animal-card" onclick="openAnimalDetail('${a.id}')">
-      <div class="animal-av ${a.sexe}">${a.sexe==='M'?'♂':'♀'}</div>
-      <div style="flex:1">
-        <div style="font-family:'DM Serif Display',serif;font-size:.95rem;color:var(--forest)">${a.nom}</div>
-        <div style="font-size:.72rem;color:var(--muted)">${a.surnom?'"'+a.surnom+'" · ':''} ${a.naiss?fmtShort(a.naiss):''} ${a.robe?'· '+a.robe:''}</div>
-        ${a.autoCreated?'<span class="badge badge-info" style="font-size:.6rem">Auto · À compléter</span>':''}
-      </div>
-      <div style="text-align:right;display:flex;flex-direction:column;gap:.2rem;align-items:flex-end">
-        <span class="badge ${statutBadge[a.statut]||'badge-muted'}">${statutLabel[a.statut]||a.statut}</span>
-        ${a.parents?.pere?`<span style="font-size:.68rem;color:var(--muted)">🔵 ${a.parents.pere.split(' ').slice(0,2).join(' ')}</span>`:''}
-      </div>
-    </div>`).join('');
+  // Count display
+  const countEl = document.getElementById('ped-count');
+  if (countEl) countEl.textContent = animals.length + ' animal(s)';
+
+  list.innerHTML = animals.map(function(a) {
+    const sB = statutBadge[a.statut] || 'badge-muted';
+    const sL = statutLabel[a.statut] || a.statut;
+    const pereShort = a.parents && a.parents.pere ? a.parents.pere.split(' ').slice(0,3).join(' ') : '';
+    const meta = [
+      a.surnom ? '"' + a.surnom + '"' : '',
+      a.naiss ? fmtShort(a.naiss) : '',
+      a.robe || ''
+    ].filter(Boolean).join(' · ');
+    return '<div class="animal-card" onclick="openAnimalDetail(\'' + a.id + '\')">'
+      + '<div class="animal-av ' + (a.sexe||'F') + '">' + (a.sexe==='M'?'♂':'♀') + '</div>'
+      + '<div style="flex:1">'
+      + '<div style="font-family:'DM Serif Display',serif;font-size:.95rem;color:var(--forest)">' + (a.nom||'—') + '</div>'
+      + '<div style="font-size:.72rem;color:var(--muted)">' + meta + '</div>'
+      + (a.autoCreated ? '<span class="badge badge-info" style="font-size:.6rem">Auto · À compléter</span>' : '')
+      + '</div>'
+      + '<div style="text-align:right;display:flex;flex-direction:column;gap:.2rem;align-items:flex-end">'
+      + '<span class="badge ' + sB + '">' + sL + '</span>'
+      + (pereShort ? '<span style="font-size:.68rem;color:var(--muted)">🔵 ' + pereShort + '</span>' : '')
+      + '</div>'
+      + '</div>';
+  }).join('');
 }
 
 function openAnimalDetail(id){
-  const a=(state.animaux||[]).find(x=>x.id===id);if(!a)return;
-  // Pre-fill form for editing
+  const a=(state.animaux||[]).find(x=>x.id===id);
+  if(!a)return;
+  _editingAnimalId = id;
   document.getElementById('pa-nom').value=a.nom||'';
   document.getElementById('pa-surnom').value=a.surnom||'';
   document.getElementById('pa-sexe').value=a.sexe||'F';
@@ -1350,34 +1393,27 @@ function openAnimalDetail(id){
   document.getElementById('pa-yeux').value=a.yeux||'';
   document.getElementById('pa-puce').value=a.puce||'';
   document.getElementById('pa-affixe').value=a.affixe||'';
-  document.getElementById('pa-pere').value=a.parents?.pere||'';
-  document.getElementById('pa-mere').value=a.parents?.mere||'';
-  document.getElementById('pa-gpp').value=a.gp?.gpp||'';
-  document.getElementById('pa-gmp').value=a.gp?.gmp||'';
-  document.getElementById('pa-gpm').value=a.gp?.gpm||'';
-  document.getElementById('pa-gmm').value=a.gp?.gmm||'';
-  document.getElementById('pa-agpp1').value=a.agp?.agpp1||'';
-  document.getElementById('pa-agpp2').value=a.agp?.agpp2||'';
-  document.getElementById('pa-agpm1').value=a.agp?.agpm1||'';
-  document.getElementById('pa-agpm2').value=a.agp?.agpm2||'';
-  document.getElementById('pa-agpat1').value=a.agp?.agpat1||'';
-  document.getElementById('pa-agpat2').value=a.agp?.agpat2||'';
-  document.getElementById('pa-agmat1').value=a.agp?.agmat1||'';
-  document.getElementById('pa-agmat2').value=a.agp?.agmat2||'';
-  document.getElementById('pa-notes').value=a.notes||'';
-  // Remove old animal and resave on next save
-  state.animaux=(state.animaux||[]).filter(x=>x.id!==id);
+  setVal('pa-agpp1',a.agp?.agpp1||'');
+  setVal('pa-agpp2',a.agp?.agpp2||'');
+  setVal('pa-agpm1',a.agp?.agpm1||'');
+  setVal('pa-agpm2',a.agp?.agpm2||'');
+  setVal('pa-agpat1',a.agp?.agpat1||'');
+  setVal('pa-agpat2',a.agp?.agpat2||'');
+  setVal('pa-agmat1',a.agp?.agmat1||'');
+  setVal('pa-agmat2',a.agp?.agmat2||'');
+  setVal('pa-notes',a.notes||'');
   switchSub('ped-new');
-  // Populate selects then set values
-  setTimeout(function() {
+  setTimeout(function(){
     populatePedigreeSelects();
-    setSelectOrLibre('pa-pere', a.parents?.pere||'');
-    setSelectOrLibre('pa-mere', a.parents?.mere||'');
-    setSelectOrLibre('pa-gpp',  a.gp?.gpp||'');
-    setSelectOrLibre('pa-gmp',  a.gp?.gmp||'');
-    setSelectOrLibre('pa-gpm',  a.gp?.gpm||'');
-    setSelectOrLibre('pa-gmm',  a.gp?.gmm||'');
-  }, 100);
+    setSelectOrLibre('pa-pere',a.parents?.pere||'');
+    setSelectOrLibre('pa-mere',a.parents?.mere||'');
+    setSelectOrLibre('pa-gpp', a.gp?.gpp||'');
+    setSelectOrLibre('pa-gmp', a.gp?.gmp||'');
+    setSelectOrLibre('pa-gpm', a.gp?.gpm||'');
+    setSelectOrLibre('pa-gmm', a.gp?.gmm||'');
+  },120);
+  const btn=document.getElementById('btn-save-animal');
+  if(btn) btn.textContent='💾 Mettre à jour la fiche';
   toast('Fiche chargée — modifiez et sauvegardez');
 }
 
@@ -1521,6 +1557,13 @@ function genCertificat(){
   document.querySelectorAll('[data-close]').forEach(btn=>btn.addEventListener('click',()=>closeM(btn.dataset.close)));
   // Pedigree
   document.getElementById('btn-save-animal').addEventListener('click',saveAnimal);
+  document.getElementById('btn-cancel-animal').addEventListener('click',function(){
+    _editingAnimalId = null;
+    const btn = document.getElementById('btn-save-animal');
+    if (btn) btn.textContent = '💾 Enregistrer';
+    ['pa-nom','pa-surnom','pa-naiss','pa-robe','pa-yeux','pa-puce','pa-affixe','pa-pere','pa-pere-libre','pa-mere','pa-mere-libre','pa-gpp','pa-gpp-libre','pa-gmp','pa-gmp-libre','pa-gpm','pa-gpm-libre','pa-gmm','pa-gmm-libre','pa-agpp1','pa-agpp2','pa-agpm1','pa-agpm2','pa-agpat1','pa-agpat2','pa-agmat1','pa-agmat2','pa-notes'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+    switchSub('ped-animaux');
+  });
   document.getElementById('btn-gen-cert').addEventListener('click',genCertificat);
   document.getElementById('btn-sync-ped').addEventListener('click',syncPorteesToPedigree);
   document.querySelectorAll('.ped-filter').forEach(btn=>btn.addEventListener('click',()=>filterAnimaux(btn.dataset.sex)));
