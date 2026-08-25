@@ -199,7 +199,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.7a.5 — 25 août 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a.6 — 25 août 2026</p>
     </div>
   </div>
 </div>
@@ -208,7 +208,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
 <div id="screen-admin" class="screen">
   <div class="topbar">
     <div class="topbar-brand"><span style="font-size:1.2rem">🌸</span><h2>Pomsky de Lilou</h2></div>
-    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.5</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
+    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.6</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
   </div>
   <nav class="bottom-nav">
     <button class="active" data-panel="tableau"><span class="ni">📊</span>Tableau</button>
@@ -585,8 +585,8 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
           </div>
           <div class="field" style="margin-bottom:.6rem"><label>Titres / Résultats / Notes santé</label><textarea id="pa-notes" placeholder="Tests ADN, résultats expo, certificats santé..."></textarea></div>
           <div style="display:flex;gap:.6rem;flex-wrap:wrap">
-            <button class="btn btn-ok" id="btn-save-animal">💾 Enregistrer</button>
-            <button class="btn btn-secondary btn-sm" id="btn-cancel-animal">✕ Annuler</button>
+            <button class="btn btn-ok" id="btn-save-animal" onclick="saveAnimal()">💾 Enregistrer</button>
+            <button class="btn btn-secondary btn-sm" id="btn-cancel-animal" onclick="cancelAnimalEdit()">✕ Annuler</button>
           </div>
         </div>
       </div>
@@ -1526,6 +1526,14 @@ function genCertificat(){
   preview.scrollIntoView({behavior:'smooth',block:'start'});
 }
 
+function cancelAnimalEdit(){
+  _editingAnimalId = null;
+  var btn = document.getElementById('btn-save-animal');
+  if (btn) btn.textContent = '💾 Enregistrer';
+  ['pa-nom','pa-surnom','pa-naiss','pa-robe','pa-yeux','pa-puce','pa-affixe','pa-pere','pa-pere-libre','pa-mere','pa-mere-libre','pa-gpp','pa-gpp-libre','pa-gmp','pa-gmp-libre','pa-gpm','pa-gpm-libre','pa-gmm','pa-gmm-libre','pa-agpp1','pa-agpp2','pa-agpm1','pa-agpm2','pa-agpat1','pa-agpat2','pa-agmat1','pa-agmat2','pa-notes'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+  switchSub('ped-animaux');
+}
+
 // ══════ INIT ══════
 (function init(){
   loadState();
@@ -1556,14 +1564,8 @@ function genCertificat(){
   document.getElementById('btn-save-email').addEventListener('click',saveEmail);
   document.querySelectorAll('[data-close]').forEach(btn=>btn.addEventListener('click',()=>closeM(btn.dataset.close)));
   // Pedigree
-  document.getElementById('btn-save-animal').addEventListener('click',saveAnimal);
-  document.getElementById('btn-cancel-animal').addEventListener('click',function(){
-    _editingAnimalId = null;
-    const btn = document.getElementById('btn-save-animal');
-    if (btn) btn.textContent = '💾 Enregistrer';
-    ['pa-nom','pa-surnom','pa-naiss','pa-robe','pa-yeux','pa-puce','pa-affixe','pa-pere','pa-pere-libre','pa-mere','pa-mere-libre','pa-gpp','pa-gpp-libre','pa-gmp','pa-gmp-libre','pa-gpm','pa-gpm-libre','pa-gmm','pa-gmm-libre','pa-agpp1','pa-agpp2','pa-agpm1','pa-agpm2','pa-agpat1','pa-agpat2','pa-agmat1','pa-agmat2','pa-notes'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
-    switchSub('ped-animaux');
-  });
+  // btn-save-animal uses onclick='saveAnimal()' directly in HTML
+  // btn-cancel-animal uses onclick="cancelAnimalEdit()" directly
   document.getElementById('btn-gen-cert').addEventListener('click',genCertificat);
   document.getElementById('btn-sync-ped').addEventListener('click',syncPorteesToPedigree);
   document.querySelectorAll('.ped-filter').forEach(btn=>btn.addEventListener('click',()=>filterAnimaux(btn.dataset.sex)));
