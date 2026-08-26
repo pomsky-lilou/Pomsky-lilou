@@ -218,7 +218,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.7a.13 — 26 août 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a.14 — 26 août 2026</p>
     </div>
   </div>
 </div>
@@ -227,7 +227,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
 <div id="screen-admin" class="screen">
   <div class="topbar">
     <div class="topbar-brand"><span style="font-size:1.2rem">🌸</span><h2>Pomsky de Lilou</h2></div>
-    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.13</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
+    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.14</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
   </div>
   <nav class="bottom-nav">
     <button class="active" data-panel="tableau"><span class="ni">📊</span>Tableau</button>
@@ -1233,7 +1233,68 @@ function openPorteeDetail(pid){
     +'<div style="margin-top:.7rem">'
     +"<button class=\"btn btn-secondary btn-sm\" data-pid=\""+portee.id+"\" onclick=\"archiverPortee(this.dataset.pid)\">📦 Archiver la portée</button>"
     +'</div>';
+  // Add the chiot form at the bottom of modal content
+  var mpContent = document.getElementById('mp-content');
+  if(mpContent){
+    var formDiv = document.createElement('div');
+    formDiv.style.cssText = 'margin-top:.8rem;padding:.8rem;background:var(--parchment);border-radius:var(--radius-sm);border:1.5px solid var(--border)';
+    formDiv.innerHTML = '<h3 style="margin-bottom:.6rem">➕ Ajouter un chiot</h3>'
+      +'<div class="form-row">'
+      +'<div class="field"><label>Sexe</label><select id="mc-sexe"><option value="F">♀ Femelle</option><option value="M">♂ Mâle</option></select></div>'
+      +'<div class="field"><label>Robe</label><input type="text" id="mc-robe" placeholder="GrisLoup, BlackTan..."></div>'
+      +'<div class="field"><label>Yeux</label><input type="text" id="mc-yeux" placeholder="Bleu, Marron..."></div>'
+      +'</div>'
+      +'<div class="form-row">'
+      +'<div class="field"><label>Nom client (optionnel)</label><input type="text" id="mc-nom" placeholder="Nom choisi"></div>'
+      +'<div class="field"><label>Poids naissance (g)</label><input type="number" id="mc-poids" placeholder="350"></div>'
+      +'</div>'
+      +'<div style="font-size:.75rem;color:var(--muted);margin-bottom:.5rem">Code : <strong id="mc-preview">—</strong></div>'
+      +'<button class="btn btn-ok btn-sm" data-pid="'+portee.id+'" onclick="addChiotModal(this.dataset.pid)">➕ Ajouter ce chiot</button>';
+
+    // Wire preview
+    setTimeout(function(){
+      var s=document.getElementById('mc-sexe');
+      var r=document.getElementById('mc-robe');
+      var y=document.getElementById('mc-yeux');
+      var prev=document.getElementById('mc-preview');
+      function upd(){
+        var n=(portee.chiots||[]).length+1;
+        if(prev)prev.textContent=genCodeChiot(portee.femelle,n,s?s.value:'F',r?r.value:'',y?y.value:'');
+      }
+      if(s)s.onchange=upd;
+      if(r)r.oninput=upd;
+      if(y)y.oninput=upd;
+      upd();
+    },50);
+
+    mpContent.appendChild(formDiv);
+  }
   openM('modal-portee');
+}
+
+function addChiotModal(pid){
+  var portee=(state.portees||[]).find(function(p){return p.id===pid;});
+  if(!portee)return;
+  var sexe=(document.getElementById('mc-sexe')||{value:'F'}).value;
+  var robe=(document.getElementById('mc-robe')||{value:''}).value.trim();
+  var yeux=(document.getElementById('mc-yeux')||{value:''}).value.trim();
+  var nomClient=(document.getElementById('mc-nom')||{value:''}).value.trim();
+  var poids=(document.getElementById('mc-poids')||{value:''}).value;
+  var num=(portee.chiots||[]).length+1;
+  var code=genCodeChiot(portee.femelle,num,sexe,robe,yeux);
+  var cid=Date.now().toString();
+  var chiot={
+    id:cid,codeProvisoire:code,nom:nomClient||code,nomClient:nomClient,
+    sexe:sexe,robe:robe,yeux:yeux,poids:poids,
+    vendu:false,affectation:null,
+    etapes:{verm1:false,verm2:false,verm3:false,veto1:false,veto2:false,vaccin:false,puce:false},
+    infoComplementaire:'',
+  };
+  portee.chiots.push(chiot);
+  autoCreatePedigreeFiche(cid,code,sexe,yeux,portee);
+  saveState();
+  toast('✅ '+code+' ajouté');
+  openPorteeDetail(pid);
 }
 
 function buildChiotDtl(c, portee){
