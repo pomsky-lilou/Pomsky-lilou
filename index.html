@@ -186,6 +186,25 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
 .animal-card:hover{border-color:var(--sage);transform:translateY(-1px)}
 .animal-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;font-weight:700;color:white;flex-shrink:0}
 .animal-av.M{background:var(--info)}.animal-av.F{background:#e91e8c}
+
+.nav-badge{position:absolute;top:2px;right:2px;border-radius:50%;min-width:16px;height:16px;padding:0 3px;font-size:.58rem;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid var(--forest)}
+.nav-badge.rouge{background:#c0392b;color:white}
+.nav-badge.orange{background:#e67e22;color:white}
+.nav-badge.bleu{background:#2980b9;color:white}
+.bottom-nav button{position:relative}
+.chiot-dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:2px}
+.chiot-dot.rouge{background:#c0392b}
+.chiot-dot.orange{background:#e67e22}
+.chiot-dot.bleu{background:#2980b9}
+.chiot-dot.vert{background:#27ae60}
+.etape-row{display:flex;align-items:center;padding:.4rem .6rem;border-bottom:1px solid var(--border);font-size:.81rem;gap:.5rem}
+.etape-row:last-child{border-bottom:none}
+.etape-check{width:22px;height:22px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:.75rem;transition:all .2s;background:white}
+.etape-check.done{background:var(--ok);border-color:var(--ok);color:white}
+.portee-card{background:white;border:1.5px solid var(--border);border-radius:var(--radius);padding:.9rem 1rem;margin-bottom:.8rem;box-shadow:var(--shadow);cursor:pointer;transition:all .2s}
+.portee-card:hover{transform:translateY(-1px)}
+.chiot-full{background:white;border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:.7rem .9rem;margin-bottom:.5rem}
+.chiot-full-header{display:flex;align-items:center;gap:.6rem;cursor:pointer}
 </style>
 </head>
 <body>
@@ -199,7 +218,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.7a.6 — 25 août 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a.7 — 26 août 2026</p>
     </div>
   </div>
 </div>
@@ -208,12 +227,12 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
 <div id="screen-admin" class="screen">
   <div class="topbar">
     <div class="topbar-brand"><span style="font-size:1.2rem">🌸</span><h2>Pomsky de Lilou</h2></div>
-    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.6</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
+    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.7</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
   </div>
   <nav class="bottom-nav">
     <button class="active" data-panel="tableau"><span class="ni">📊</span>Tableau</button>
-    <button data-panel="outils"><span class="ni">⚙️</span>Outils</button>
-    <button data-panel="commercial"><span class="ni">🛒</span>Ventes</button>
+    <button data-panel="outils"><span class="ni">⚙️</span>Soigneurs</button>
+    <button data-panel="commercial"><span class="ni">👨‍👩‍👧</span>Famille</button>
     <button data-panel="finance"><span class="ni">💶</span>Finance</button>
     <button data-panel="saillies"><span class="ni">🐕</span>Saillies</button>
     <button data-panel="bebes"><span class="ni">🍼</span>Bébés</button>
@@ -272,16 +291,19 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <!-- BEBES -->
     <div id="panel-bebes" class="panel">
       <div class="mod-tabs">
-        <button class="mod-tab active" data-sub="bebes-liste">🍼 Portées</button>
+        <button class="mod-tab active" data-sub="bebes-liste">🍼 Portées actives</button>
         <button class="mod-tab" data-sub="bebes-new">➕ Nouvelle portée</button>
+        <button class="mod-tab" data-sub="bebes-hist">📋 Historique</button>
       </div>
       <div id="bebes-liste" class="subtab active"><div id="portees-container"></div></div>
+      <div id="bebes-hist" class="subtab"><div id="portees-hist-container"></div></div>
       <div id="bebes-new" class="subtab">
         <div class="card">
-          <h2 style="margin-bottom:.8rem">Enregistrer une portée</h2>
+          <h2 style="margin-bottom:.7rem">Déclarer une nouvelle portée</h2>
+          <p style="font-size:.78rem;color:var(--muted);margin-bottom:.7rem">Code chiot généré auto : <strong>[Mère]-[N°]-[Sexe]-[Robe]-[Yeux]</strong></p>
           <div class="form-row">
             <div class="field"><label>Saillie associée</label><select id="b-saillie"><option value="">— Choisir —</option></select></div>
-            <div class="field"><label>Date naissance</label><input type="date" id="b-naissance"></div>
+            <div class="field"><label>Date de naissance</label><input type="date" id="b-naissance"></div>
           </div>
           <div class="form-row">
             <div class="field"><label>Nb chiots nés</label><input type="number" id="b-nb" min="1" max="12" placeholder="5"></div>
@@ -290,7 +312,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
           <button class="btn btn-ok" id="btn-save-portee" style="margin-top:.4rem">💾 Créer la portée</button>
         </div>
         <div class="card" id="chiots-form-card" style="display:none">
-          <h2 style="margin-bottom:.7rem">Chiots de la portée</h2>
+          <h2 style="margin-bottom:.5rem">Chiots de la portée</h2>
           <div id="chiots-form-list"></div>
           <button class="btn btn-ok btn-sm" id="btn-add-chiot" style="margin-top:.5rem">➕ Ajouter un chiot</button>
         </div>
@@ -300,24 +322,27 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <!-- COMMERCIAL -->
     <div id="panel-commercial" class="panel">
       <div class="mod-tabs">
-        <button class="mod-tab active" data-sub="crm-liste">👤 Clients</button>
-        <button class="mod-tab" data-sub="crm-new">➕ Nouveau client</button>
+        <button class="mod-tab active" data-sub="crm-liste">👨‍👩‍👧 Familles</button>
+        <button class="mod-tab" data-sub="crm-new">➕ Nouvelle famille</button>
         <button class="mod-tab" data-sub="crm-actions">✅ Actions com.</button>
       </div>
       <div id="crm-liste" class="subtab active"><div id="crm-container"></div></div>
       <div id="crm-new" class="subtab">
         <div class="card">
-          <h2 style="margin-bottom:.8rem">Nouveau dossier client</h2>
+          <h2 style="margin-bottom:.8rem">Nouvelle fiche famille</h2>
           <div class="form-row">
             <div class="field"><label>Prénom</label><input type="text" id="c-prenom" placeholder="Marie"></div>
             <div class="field"><label>Nom</label><input type="text" id="c-nom" placeholder="Dupont"></div>
           </div>
           <div class="form-row">
-            <div class="field"><label>Téléphone</label><input type="tel" id="c-tel"></div>
-            <div class="field"><label>Email</label><input type="email" id="c-email"></div>
+            <div class="field"><label>Téléphone</label><input type="tel" id="c-tel" placeholder="+33 6 00 00 00 00"></div>
+            <div class="field"><label>Email</label><input type="email" id="c-email" placeholder="famille@email.com"></div>
           </div>
           <div class="form-row">
-            <div class="field"><label>Chiot réservé</label><select id="c-chiot"><option value="">— Choisir —</option></select></div>
+            <div class="field" style="grid-column:1/-1"><label>Adresse</label><input type="text" id="c-adresse" placeholder="1 rue de la Paix, 75001 Paris"></div>
+          </div>
+          <div class="form-row">
+            <div class="field"><label>Chiot affecté</label><select id="c-chiot"><option value="">— Choisir —</option></select></div>
             <div class="field"><label>Prix (€)</label><input type="number" id="c-prix" placeholder="1200"></div>
           </div>
           <div class="form-row">
@@ -329,7 +354,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
             <div class="field"><label>Date départ</label><input type="date" id="c-depart"></div>
           </div>
           <div class="field" style="margin-bottom:.6rem"><label>Notes</label><textarea id="c-notes" placeholder="Informations..."></textarea></div>
-          <button class="btn btn-ok" id="btn-save-client">💾 Enregistrer</button>
+          <button class="btn btn-ok" id="btn-save-client">💾 Enregistrer la fiche</button>
         </div>
       </div>
       <div id="crm-actions" class="subtab">
@@ -746,6 +771,7 @@ function doLogin(){
   document.getElementById('admin-date').textContent=fmtDate(new Date());
   document.getElementById('d-date').value=today();
   renderTableau();
+  updateNavBadges();
   startSync();
 }
 function doLogout(){state.currentUser=null;document.getElementById('login-id').value='';document.getElementById('login-pin').value='';showScreen('login');}
@@ -873,65 +899,320 @@ function annulSaillie(){
 }
 
 // ══════ PORTEES ══════
+function genCodeChiot(mere, numero, sexe, robe, yeux){
+  var nomMere = mere ? mere.split(' ')[0] : 'X';
+  var num = String(numero).padStart(2,'0');
+  var s = sexe === 'M' ? 'M' : 'F';
+  var r = (robe||'').replace(/\s+/g,'').slice(0,8) || 'NC';
+  var y = (yeux||'').replace(/\s+/g,'').slice(0,6) || 'NC';
+  return nomMere + '-' + num + '-' + s + '-' + r + '-' + y;
+}
+
 function savePortee(){
-  const sId=document.getElementById('b-saillie').value;
-  const naiss=document.getElementById('b-naissance').value;
-  const nb=parseInt(document.getElementById('b-nb').value)||0;
-  const viv=parseInt(document.getElementById('b-vivants').value)||nb;
+  var sId = document.getElementById('b-saillie').value;
+  var naiss = document.getElementById('b-naissance').value;
+  var nb = parseInt(document.getElementById('b-nb').value)||0;
+  var viv = parseInt(document.getElementById('b-vivants').value)||nb;
   if(!naiss||!nb){toast('Remplissez tous les champs');return;}
-  const sail=(state.saillies||[]).find(s=>s.id===sId);
-  const portee={id:Date.now().toString(),saillieId:sId,naissance:naiss,nbNes:nb,nbVivants:viv,femelle:sail?.femelle||'—',male:sail?.male||'—',statut:'active',veto8sem:addDays(naiss,56),veto10sem:addDays(naiss,70),verm:[addDays(naiss,15),addDays(naiss,30),addDays(naiss,45)],chiots:[]};
-  if(sail)sail.statut='mise-bas';
-  if(!state.portees)state.portees=[];
-  state.portees.unshift(portee);saveState();toast('✅ Portée créée');
+  var sail = (state.saillies||[]).find(function(s){return s.id===sId;});
+  var portee = {
+    id: Date.now().toString(),
+    saillieId: sId,
+    naissance: naiss, nbNes: nb, nbVivants: viv,
+    femelle: sail?sail.femelle:'—', male: sail?sail.male:'—',
+    statut: 'active',
+    veto8sem: addDays(naiss,56), veto10sem: addDays(naiss,70),
+    verm: [addDays(naiss,15), addDays(naiss,30), addDays(naiss,45)],
+    chiots: [],
+  };
+  if(sail) sail.statut='mise-bas';
+  if(!state.portees) state.portees=[];
+  state.portees.unshift(portee);
+  saveState(); toast('✅ Portée créée');
   document.getElementById('chiots-form-card').style.display='block';
   renderChiotsForm(portee.id);
 }
+
 function renderChiotsForm(pid){
-  const portee=(state.portees||[]).find(p=>p.id===pid);if(!portee)return;
-  const list=document.getElementById('chiots-form-list');if(!list)return;
-  list.innerHTML=(portee.chiots||[]).map((c,i)=>`<div class="chiot-card"><div class="chiot-av ${c.sexe==='M'?'male':'female'}">${c.sexe==='M'?'♂':'♀'}</div><div style="flex:1"><div style="font-size:.86rem;font-weight:600">${c.nom||'#'+(i+1)}</div><div style="font-size:.7rem;color:var(--muted)">${c.couleurYeux}</div></div><span class="badge ${c.vendu?'badge-muted':'badge-ok'}">${c.vendu?'Vendu':'Dispo'}</span></div>`).join('')||'<p style="color:var(--muted);font-size:.83rem">Aucun chiot saisi.</p>';
-  document.getElementById('btn-add-chiot').onclick=function(){
-    const nom=prompt('Nom/numéro provisoire :');if(!nom)return;
-    const sexe=confirm('Mâle ?')?'M':'F';
-    const yeux=prompt('Couleur des yeux :')||'—';
-    const chiotId=Date.now().toString();
-    portee.chiots.push({id:chiotId,nom,sexe,couleurYeux:yeux,vendu:false});
-    // Auto-create pedigree fiche
-    autoCreatePedigreeFiche(chiotId, nom, sexe, yeux, portee);
-    saveState();renderChiotsForm(pid);renderPortees();populateChiotSel();
-    toast('✅ Chiot ajouté + fiche pedigree créée automatiquement');
-  };
+  var portee = (state.portees||[]).find(function(p){return p.id===pid;});
+  if(!portee) return;
+  var list = document.getElementById('chiots-form-list');
+  if(!list) return;
+  list.innerHTML = '';
+  if(!(portee.chiots||[]).length){
+    list.innerHTML = '<p style="color:var(--muted);font-size:.82rem">Aucun chiot déclaré.</p>';
+  } else {
+    portee.chiots.forEach(function(c,i){
+      var div = document.createElement('div');
+      div.className = 'chiot-card'; div.style.marginBottom='.5rem';
+      var av = document.createElement('div');
+      av.className = 'chiot-av '+(c.sexe==='M'?'male':'female');
+      av.textContent = c.sexe==='M'?'♂':'♀';
+      var info = document.createElement('div'); info.style.flex='1';
+      info.innerHTML = '<div style="font-size:.82rem;font-weight:600">'+(c.codeProvisoire||c.nom||'#'+(i+1))+'</div>'
+        +'<div style="font-size:.7rem;color:var(--muted)">'+(c.robe||'')+' · '+(c.yeux||'')+'</div>';
+      var del = document.createElement('button');
+      del.className='btn btn-danger btn-sm'; del.textContent='✕';
+      del.onclick=(function(pp,ci){return function(){delChiotPortee(pp,ci);};})(pid,c.id);
+      div.appendChild(av); div.appendChild(info); div.appendChild(del);
+      list.appendChild(div);
+    });
+  }
+  var addBtn = document.getElementById('btn-add-chiot');
+  if(addBtn){
+    addBtn.onclick = function(){
+      var sexe = confirm('Mâle ?') ? 'M' : 'F';
+      var robe = prompt('Robe (ex: GrisLoup, BlackTan) :') || '';
+      var yeux = prompt('Yeux (ex: Bleu, Marron, Bicolore) :') || '';
+      var num = (portee.chiots||[]).length + 1;
+      var code = genCodeChiot(portee.femelle, num, sexe, robe, yeux);
+      var cid = Date.now().toString();
+      var chiot = {
+        id:cid, codeProvisoire:code, nom:code,
+        sexe:sexe, robe:robe, yeux:yeux, vendu:false, affectation:null,
+        etapes:{verm1:false,verm2:false,verm3:false,veto1:false,veto2:false,vaccin:false,puce:false},
+        infoComplementaire:'',
+      };
+      portee.chiots.push(chiot);
+      autoCreatePedigreeFiche(cid, code, sexe, yeux, portee);
+      saveState(); renderChiotsForm(pid); renderPortees(); populateChiotSel();
+      toast('✅ ' + code + ' ajouté');
+    };
+  }
 }
+
+function delChiotPortee(pid, cid){
+  var portee=(state.portees||[]).find(function(p){return p.id===pid;});
+  if(!portee) return;
+  portee.chiots=(portee.chiots||[]).filter(function(c){return c.id!==cid;});
+  saveState(); renderChiotsForm(pid); renderPortees();
+}
+
+function calcNotifPortee(portee){
+  var t=today(); var rouge=0,orange=0,bleu=0;
+  (portee.chiots||[]).forEach(function(c){
+    var etapes=c.etapes||{};
+    if(!etapes.puce) bleu++;
+    if(!etapes.vaccin) bleu++;
+    (portee.verm||[]).forEach(function(d,i){
+      var key='verm'+(i+1);
+      if(!etapes[key]){ var diff=diffDays(t,d); if(diff<0) rouge++; else if(diff<=3) orange++; else bleu++; }
+    });
+    if(!etapes.veto1){ var diff=diffDays(t,portee.veto8sem); if(diff<0) rouge++; else if(diff<=3) orange++; }
+    if(!c.affectation&&!c.vendu) bleu++;
+  });
+  if(rouge>0) return {level:'rouge',count:rouge};
+  if(orange>0) return {level:'orange',count:orange};
+  if(bleu>0) return {level:'bleu',count:bleu};
+  return {level:'vert',count:0};
+}
+
+function calcNotifChiot(c, portee){
+  var t=today(); var rouge=0,orange=0,bleu=0;
+  var etapes=c.etapes||{};
+  if(!etapes.puce) bleu++;
+  if(!etapes.vaccin) bleu++;
+  (portee.verm||[]).forEach(function(d,i){
+    var key='verm'+(i+1);
+    if(!etapes[key]){ var diff=diffDays(t,d); if(diff<0) rouge++; else if(diff<=3) orange++; else bleu++; }
+  });
+  if(!etapes.veto1){ var diff=diffDays(t,portee.veto8sem); if(diff<0) rouge++; else if(diff<=3) orange++; }
+  if(!c.affectation&&!c.vendu) bleu++;
+  if(rouge>0) return {level:'rouge'};
+  if(orange>0) return {level:'orange'};
+  if(bleu>0) return {level:'bleu'};
+  return {level:'vert'};
+}
+
 function renderPortees(){
-  const container=document.getElementById('portees-container');if(!container)return;
-  const active=(state.portees||[]).filter(p=>p.statut==='active');
-  if(!active.length){container.innerHTML='<div class="card"><p style="color:var(--muted);font-size:.83rem">Aucune portée active.</p></div>';return;}
-  const t=today();
-  container.innerHTML=active.map(p=>{
-    const age=diffDays(p.naissance,t);
-    const dispos=(p.chiots||[]).filter(c=>!c.vendu).length;
-    const nxtVerm=(p.verm||[]).find(d=>d>=t);
-    return `<div class="card" style="cursor:pointer" onclick="openPorteeModal('${p.id}')">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.5rem">
-        <div><div style="font-family:DM Serif Display,serif;font-size:.95rem;color:var(--forest)">🍼 ${p.femelle} × ${p.male}</div>
-        <div style="font-size:.72rem;color:var(--muted)">Naissance : ${fmtShort(p.naissance)} · ${age}j</div></div>
-        <div style="text-align:right"><span class="badge badge-ok">${dispos} dispo</span><div style="font-size:.7rem;color:var(--muted)">${(p.chiots||[]).length} nés</div></div>
-      </div>
-      <div style="display:flex;gap:.35rem;flex-wrap:wrap;font-size:.73rem">
-        <span class="cal-event veto">🏥 Véto 8sem : ${fmtShort(p.veto8sem)}</span>
-        ${nxtVerm?`<span class="cal-event alerte">💊 Verm : ${fmtShort(nxtVerm)}</span>`:''}
-      </div></div>`;
-  }).join('');
+  var container=document.getElementById('portees-container');
+  var histCont=document.getElementById('portees-hist-container');
+  if(!container) return;
+  var active=(state.portees||[]).filter(function(p){return p.statut==='active';});
+  var archived=(state.portees||[]).filter(function(p){return p.statut!=='active';});
+  var t=today();
+  container.innerHTML='';
+  if(!active.length){
+    container.innerHTML='<div class="card"><p style="color:var(--muted);font-size:.83rem">Aucune portée active.</p></div>';
+  } else {
+    active.forEach(function(p){
+      var age=diffDays(p.naissance,t);
+      var dispos=(p.chiots||[]).filter(function(c){return !c.vendu&&c.affectation!=='famille';}).length;
+      var notif=calcNotifPortee(p);
+      var nxtVerm=(p.verm||[]).find(function(d){return d>=t;});
+      var borderColor=notif.level==='rouge'?'#c0392b':notif.level==='orange'?'#e67e22':notif.level==='bleu'?'#2980b9':'#27ae60';
+      var badgeCls=notif.level==='rouge'?'badge-alert':notif.level==='orange'?'badge-warn':'badge-info';
+      var card=document.createElement('div');
+      card.className='portee-card';
+      card.style.borderLeft='4px solid '+borderColor;
+      card.onclick=(function(pid){return function(){openPorteeDetail(pid);};})(p.id);
+      var dots=(p.chiots||[]).map(function(c){
+        var n=calcNotifChiot(c,p);
+        return '<span class="chiot-dot '+n.level+'"></span>';
+      }).join('');
+      card.innerHTML='<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.5rem">'
+        +'<div><div style="font-family:DM Serif Display,serif;font-size:1rem;color:var(--forest)">🍼 '+p.femelle+' × '+p.male+'</div>'
+        +'<div style="font-size:.73rem;color:var(--muted)">Née le '+fmtShort(p.naissance)+' · '+age+'j · '+(p.chiots||[]).length+' chiots</div></div>'
+        +'<div style="text-align:right">'
+        +(notif.count>0?'<span class="badge '+badgeCls+'">'+notif.count+' action'+(notif.count>1?'s':'')+'</span>':'<span class="badge badge-ok">✓ À jour</span>')
+        +'<div style="font-size:.7rem;color:var(--muted);margin-top:.2rem">'+dispos+' disponible'+(dispos>1?'s':'')+'</div>'
+        +'</div></div>'
+        +'<div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;font-size:.73rem;margin-bottom:.4rem">'
+        +(nxtVerm?'<span class="cal-event alerte">💊 Verm : '+fmtShort(nxtVerm)+'</span>':'')
+        +'<span class="cal-event veto">🏥 Véto 8sem : '+fmtShort(p.veto8sem)+'</span>'
+        +'</div>'
+        +'<div style="display:flex;gap:.3rem;align-items:center">'+dots+'<span style="font-size:.7rem;color:var(--muted);margin-left:.3rem">Statut chiots</span></div>';
+      container.appendChild(card);
+    });
+  }
+  if(histCont){
+    histCont.innerHTML='';
+    if(!archived.length){
+      histCont.innerHTML='<div class="card"><p style="color:var(--muted);font-size:.83rem">Aucune portée archivée.</p></div>';
+    } else {
+      archived.forEach(function(p){
+        var card=document.createElement('div');
+        card.className='card'; card.style.cssText='opacity:.75;margin-bottom:.5rem;cursor:pointer';
+        card.onclick=(function(pid){return function(){openPorteeDetail(pid);};})(p.id);
+        card.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center">'
+          +'<div><div style="font-size:.88rem;font-weight:600">'+p.femelle+' × '+p.male+'</div>'
+          +'<div style="font-size:.72rem;color:var(--muted)">'+fmtShort(p.naissance)+' · '+(p.chiots||[]).length+' chiots</div></div>'
+          +'<span class="badge badge-muted">'+p.statut+'</span></div>';
+        histCont.appendChild(card);
+      });
+    }
+  }
   populateChiotSel();
+  updateNavBadges();
 }
-function openPorteeModal(id){
-  const p=(state.portees||[]).find(x=>x.id===id);if(!p)return;
-  document.getElementById('mp-title').textContent=`${p.femelle} × ${p.male}`;
-  document.getElementById('mp-content').innerHTML=`<div style="font-size:.82rem;margin-bottom:.7rem"><div>Nés : ${p.nbNes} · Vivants : ${p.nbVivants}</div><div>Véto 8sem : ${fmtShort(p.veto8sem)} · 10sem : ${fmtShort(p.veto10sem)}</div><div>Vermifuges : ${(p.verm||[]).map(d=>fmtShort(d)).join(', ')}</div></div>
-  <h3 style="margin-bottom:.4rem">Chiots</h3>${(p.chiots||[]).map((c,i)=>`<div class="chiot-card"><div class="chiot-av ${c.sexe==='M'?'male':'female'}">${c.sexe==='M'?'♂':'♀'}</div><div style="flex:1"><div style="font-size:.86rem;font-weight:600">${c.nom||'#'+(i+1)}</div><div style="font-size:.7rem;color:var(--muted)">${c.couleurYeux}</div></div><span class="badge ${c.vendu?'badge-muted':'badge-ok'}">${c.vendu?'Vendu':'Dispo'}</span></div>`).join('')||'<p style="color:var(--muted);font-size:.83rem">Aucun chiot.</p>'}`;
+
+function openPorteeDetail(pid){
+  var portee=(state.portees||[]).find(function(p){return p.id===pid;});
+  if(!portee) return;
+  var chiots=portee.chiots||[];
+  document.getElementById('mp-title').textContent=portee.femelle+' × '+portee.male+' — '+fmtShort(portee.naissance);
+  var etapesPortee=[
+    {key:'verm1',label:'💊 Vermifuge 1',date:(portee.verm||[])[0]},
+    {key:'verm2',label:'💊 Vermifuge 2',date:(portee.verm||[])[1]},
+    {key:'verm3',label:'💊 Vermifuge 3',date:(portee.verm||[])[2]},
+    {key:'veto1',label:'🏥 Véto 8 semaines',date:portee.veto8sem},
+    {key:'veto2',label:'🏥 Véto 10 semaines',date:portee.veto10sem},
+    {key:'vaccin',label:'💉 Vaccins'},
+    {key:'puce',label:'🔖 Puce électronique'},
+  ];
+  var etapesHTML='<h3 style="margin-bottom:.4rem">Suivi vétérinaire portée</h3>'
+    +'<div style="border:1.5px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:.8rem">'
+    +etapesPortee.map(function(e){
+      var allDone=chiots.every(function(c){return !!(c.etapes||{})[e.key];});
+      var someDone=chiots.some(function(c){return !!(c.etapes||{})[e.key];});
+      var dotCls=allDone?'vert':someDone?'orange':'rouge';
+      return '<div class="etape-row"><span class="chiot-dot '+dotCls+'"></span>'
+        +'<span style="flex:1">'+e.label+(e.date?' <span style="color:var(--muted);font-size:.7rem">· '+fmtShort(e.date)+'</span>':'')+'</span>'
+        +'<span style="font-size:.73rem;color:var(--muted)">'+chiots.filter(function(c){return !!(c.etapes||{})[e.key];}).length+'/'+chiots.length+'</span>'
+        +'</div>';
+    }).join('')+'</div>';
+
+  var chiotsHTML='<h3 style="margin-bottom:.4rem">Chiots (cliquer pour détail)</h3>'
+    +chiots.map(function(c){
+      var notif=calcNotifChiot(c,portee);
+      var badgeCls=notif.level==='rouge'?'badge-alert':notif.level==='orange'?'badge-warn':notif.level==='bleu'?'badge-info':'badge-ok';
+      var famille=(state.clients||[]).find(function(cl){return cl.chiot===c.id;});
+      return '<div class="chiot-full">'
+        +"<div class=\"chiot-full-header\" data-cid=\""+c.id+"\" onclick=\"toggleChiotDtl(this.dataset.cid)\">"
+        +'<div class="chiot-av '+(c.sexe==='M'?'male':'female')+'">'+(c.sexe==='M'?'♂':'♀')+'</div>'
+        +'<div style="flex:1"><div style="font-weight:600;font-size:.86rem">'+c.codeProvisoire+'</div>'
+        +'<div style="font-size:.7rem;color:var(--muted)">'+(c.robe||'')+' · '+(c.yeux||'')+'</div></div>'
+        +'<span class="badge '+badgeCls+'">'+(notif.level==='vert'?'✓':notif.level==='rouge'?'🔴':notif.level==='orange'?'🟠':'🔵')+'</span>'
+        +(famille?'<span class="badge badge-ok" style="margin-left:.3rem">👨‍👩‍👧 '+famille.prenom+'</span>':
+          c.affectation==='elevage'?'<span class="badge" style="margin-left:.3rem;background:#e8d5f5;color:#4a235a">🏡 Élevage</span>':
+          '<span class="badge badge-muted" style="margin-left:.3rem">Non affecté</span>')
+        +'</div>'
+        +'<div id="cdtl-'+c.id+'" style="display:none;margin-top:.6rem;padding-top:.6rem;border-top:1px solid var(--border)">'
+        +buildChiotDtl(c,portee)
+        +'</div></div>';
+    }).join('');
+
+  document.getElementById('mp-content').innerHTML=
+    '<div style="font-size:.82rem;margin-bottom:.7rem">Née le '+fmtShort(portee.naissance)+' · '+chiots.length+' chiots nés · '+portee.nbVivants+' vivants</div>'
+    +etapesHTML+chiotsHTML
+    +'<div style="margin-top:.7rem">'
+    +'<button class="btn btn-secondary btn-sm" onclick="archiverPortee(''+portee.id+'')">📦 Archiver la portée</button>'
+    +'</div>';
   openM('modal-portee');
 }
+
+function buildChiotDtl(c, portee){
+  var etapes=[
+    {key:'verm1',label:'💊 Vermifuge 1',date:(portee.verm||[])[0]},
+    {key:'verm2',label:'💊 Vermifuge 2',date:(portee.verm||[])[1]},
+    {key:'verm3',label:'💊 Vermifuge 3',date:(portee.verm||[])[2]},
+    {key:'veto1',label:'🏥 Véto 8 sem',date:portee.veto8sem},
+    {key:'veto2',label:'🏥 Véto 10 sem',date:portee.veto10sem},
+    {key:'vaccin',label:'💉 Vaccins'},
+    {key:'puce',label:'🔖 Puce'},
+  ];
+  var famille=(state.clients||[]).find(function(cl){return cl.chiot===c.id;});
+  return '<div style="font-size:.82rem">'
+    +'<h3 style="margin-bottom:.35rem">Étapes vétérinaires</h3>'
+    +'<div style="border:1.5px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:.6rem">'
+    +etapes.map(function(e){
+      var done=!!(c.etapes||{})[e.key];
+      return '<div class="etape-row">'
+        +'<div class="etape-check '+(done?'done':'')+'" data-pid="'+portee.id+'" data-cid="'+c.id+'" data-key="'+e.key+'" onclick="toggleEtape(this.dataset.pid,this.dataset.cid,this.dataset.key)">'+(done?'✓':'')+'</div>'
+        +'<span style="flex:1;margin-left:.5rem">'+e.label+(e.date?' <span style="color:var(--muted);font-size:.7rem">· '+fmtShort(e.date)+'</span>':'')+'</span>'
+        +'</div>';
+    }).join('')+'</div>'
+    +'<h3 style="margin-bottom:.35rem">Affectation</h3>'
+    +'<div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.6rem">'
+    +'<button class="btn btn-sm '+(c.affectation==='famille'?'btn-ok':'btn-secondary')+'" data-pid="'+portee.id+'" data-cid="'+c.id+'" data-type="famille" onclick="setAffectation(this.dataset.pid,this.dataset.cid,this.dataset.type)">👨‍👩‍👧 Famille</button>'
+    +'<button class="btn btn-sm '+(c.affectation==='elevage'?'btn-purple':'btn-secondary')+'" data-pid="'+portee.id+'" data-cid="'+c.id+'" data-type="elevage" onclick="setAffectation(this.dataset.pid,this.dataset.cid,this.dataset.type)" style="'+(c.affectation==='elevage'?'background:var(--purple);color:white':'')+'">🏡 Élevage</button>'
+    +'</div>'
+    +(famille?'<div style="background:#edf7f0;border-radius:8px;padding:.45rem .65rem;margin-bottom:.5rem;font-size:.8rem">👨‍👩‍👧 <strong>'+famille.prenom+' '+famille.nom+'</strong> · '+famille.tel+'</div>':'')
+    +'<h3 style="margin-bottom:.3rem">Informations complémentaires</h3>'
+    +'<textarea data-pid="'+portee.id+'" data-cid="'+c.id+'" style="width:100%;padding:.5rem .7rem;border:1.5px solid var(--border);border-radius:8px;font-family:DM Sans,sans-serif;font-size:.82rem;resize:vertical;min-height:52px;background:var(--cream)" placeholder="Annotations..." onchange="saveChiotInfo(this.dataset.pid,this.dataset.cid,this.value)">'+(c.infoComplementaire||'')+'</textarea>'
+    +'</div>';
+}
+
+function toggleChiotDtl(cid){
+  var el=document.getElementById('cdtl-'+cid);
+  if(el) el.style.display=el.style.display==='none'?'block':'none';
+}
+
+function toggleEtape(pid,cid,key){
+  var portee=(state.portees||[]).find(function(p){return p.id===pid;});
+  if(!portee) return;
+  var chiot=(portee.chiots||[]).find(function(c){return c.id===cid;});
+  if(!chiot) return;
+  if(!chiot.etapes) chiot.etapes={};
+  chiot.etapes[key]=!chiot.etapes[key];
+  saveState(); openPorteeDetail(pid); updateNavBadges();
+  toast(chiot.etapes[key]?'✅ Étape validée':'↩ Annulée');
+}
+
+function setAffectation(pid,cid,type){
+  var portee=(state.portees||[]).find(function(p){return p.id===pid;});
+  if(!portee) return;
+  var chiot=(portee.chiots||[]).find(function(c){return c.id===cid;});
+  if(!chiot) return;
+  chiot.affectation=type;
+  if(type==='famille') chiot.vendu=true;
+  saveState(); openPorteeDetail(pid); renderPortees(); updateNavBadges();
+  toast(type==='famille'?'👨‍👩‍👧 Affecté famille':'🏡 Maintenu en élevage');
+}
+
+function saveChiotInfo(pid,cid,val){
+  var portee=(state.portees||[]).find(function(p){return p.id===pid;});
+  if(!portee) return;
+  var chiot=(portee.chiots||[]).find(function(c){return c.id===cid;});
+  if(chiot){chiot.infoComplementaire=val;saveState();}
+}
+
+function archiverPortee(pid){
+  if(!confirm("Archiver cette portée ?")) return;
+  var portee=(state.portees||[]).find(function(p){return p.id===pid;});
+  if(portee){portee.statut='archivée';saveState();closeM('modal-portee');renderPortees();toast('📦 Portée archivée');}
+}
+
 function populateChiotSel(){
   const sel=document.getElementById('c-chiot');if(!sel)return;
   sel.innerHTML='<option value="">— Choisir —</option>';
@@ -944,6 +1225,7 @@ function saveClient(){
   const nom=document.getElementById('c-nom').value.trim();
   const tel=document.getElementById('c-tel').value.trim();
   const email=document.getElementById('c-email').value.trim();
+  const adresse=(document.getElementById('c-adresse')||{value:''}).value.trim();
   const chiot=document.getElementById('c-chiot').value;
   const prix=parseFloat(document.getElementById('c-prix').value)||0;
   const typeResa=document.getElementById('c-type-resa').value;
@@ -1524,6 +1806,44 @@ function genCertificat(){
     </div>`;
 
   preview.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function updateNavBadges(){
+  var badges={bebes:calcBebesBadge(),commercial:calcFamilleBadge()};
+  Object.keys(badges).forEach(function(panel){
+    var btn=document.querySelector('.bottom-nav button[data-panel="'+panel+'"]');
+    if(!btn) return;
+    var ex=btn.querySelector('.nav-badge'); if(ex) ex.remove();
+    var b=badges[panel];
+    if(b&&b.count>0){
+      var badge=document.createElement('span');
+      badge.className='nav-badge '+b.level;
+      badge.textContent=b.count>9?'9+':b.count;
+      btn.appendChild(badge);
+    }
+  });
+}
+function calcBebesBadge(){
+  var rouge=0,orange=0,bleu=0;
+  (state.portees||[]).filter(function(p){return p.statut==='active';}).forEach(function(p){
+    var n=calcNotifPortee(p);
+    if(n.level==='rouge') rouge+=n.count;
+    else if(n.level==='orange') orange+=n.count;
+    else bleu+=n.count;
+  });
+  if(rouge>0) return {level:'rouge',count:rouge};
+  if(orange>0) return {level:'orange',count:orange};
+  if(bleu>0) return {level:'bleu',count:bleu};
+  return {level:'vert',count:0};
+}
+function calcFamilleBadge(){
+  var count=0;
+  (state.clients||[]).forEach(function(c){
+    var recu=(c.paiements||[]).filter(function(p){return p.recu;}).reduce(function(a,p){return a+p.montant;},0);
+    if(recu<c.prix) count++;
+    if(c.chequeSteril&&!c.chequeSteril.rendu) count++;
+  });
+  return count>0?{level:'orange',count:count}:{level:'vert',count:0};
 }
 
 function cancelAnimalEdit(){
