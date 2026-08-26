@@ -218,7 +218,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.7a.12 — 26 août 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a.13 — 26 août 2026</p>
     </div>
   </div>
 </div>
@@ -227,7 +227,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
 <div id="screen-admin" class="screen">
   <div class="topbar">
     <div class="topbar-brand"><span style="font-size:1.2rem">🌸</span><h2>Pomsky de Lilou</h2></div>
-    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.12</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
+    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.13</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
   </div>
   <nav class="bottom-nav">
     <button class="active" data-panel="tableau"><span class="ni">📊</span>Tableau</button>
@@ -929,9 +929,17 @@ function renderSaillies(){
     container.innerHTML+='<h3 style="margin:.7rem 0 .4rem">Archivées</h3>';
     archived.forEach(s=>{container.innerHTML+=`<div class="card" style="opacity:.65;margin-bottom:.4rem;display:flex;justify-content:space-between;align-items:center"><div style="font-size:.83rem"><strong>${s.femelle} × ${s.male}</strong> · ${fmtShort(s.date)} <span class="badge badge-muted">${s.statut}</span></div></div>`;});
   }
-  // Populate saillie select for portees
-  const bSel=document.getElementById('b-saillie');
-  if(bSel){bSel.innerHTML='<option value="">— Choisir —</option>';active.forEach(s=>{const o=document.createElement('option');o.value=s.id;o.textContent=`${s.femelle} × ${s.male} (${fmtShort(s.date)})`;bSel.appendChild(o);});}
+  // Populate saillie select — toutes saillies sauf annulées
+  var bSel=document.getElementById('b-saillie');
+  if(bSel){
+    bSel.innerHTML='<option value="">— Sans saillie associée —</option>';
+    (state.saillies||[]).filter(function(s){return s.statut!=='annulée';}).forEach(function(s){
+      var o=document.createElement('option');
+      o.value=s.id;
+      o.textContent=s.femelle+' × '+s.male+' ('+fmtShort(s.date)+')' + (s.statut==='mise-bas'?' ✓':'');
+      bSel.appendChild(o);
+    });
+  }
 }
 function openSaillieModal(id){
   const s=(state.saillies||[]).find(x=>x.id===id);if(!s)return;
