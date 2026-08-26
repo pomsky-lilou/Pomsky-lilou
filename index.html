@@ -218,7 +218,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.7a.19 — 26 août 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a.20 — 26 août 2026</p>
     </div>
   </div>
 </div>
@@ -227,7 +227,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
 <div id="screen-admin" class="screen">
   <div class="topbar">
     <div class="topbar-brand"><span style="font-size:1.2rem">🌸</span><h2>Pomsky de Lilou</h2></div>
-    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.19</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
+    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.20</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
   </div>
   <nav class="bottom-nav">
     <button class="active" data-panel="tableau"><span class="ni">📊</span>Tableau</button>
@@ -1063,37 +1063,28 @@ function renderChiotsForm(pid){
   var addBtn=document.getElementById('btn-add-chiot');
   if(addBtn){
     addBtn.onclick=function(){
+      var currentPortee=(state.portees||[]).find(function(p){return p.id===pid;});
+      if(!currentPortee){toast('Erreur: portée introuvable - rechargez');return;}
+      if(!currentPortee.chiots)currentPortee.chiots=[];
       var sexe=sexeSel?sexeSel.value:'F';
       var robe=robeInp?robeInp.value.trim():'';
       var yeux=yeuxInp?yeuxInp.value.trim():'';
       var nomClient=nomInp?nomInp.value.trim():'';
       var poids=poidsInp?poidsInp.value:'';
-      var num=(portee.chiots||[]).length+1;
-      var code=genCodeChiot(portee.femelle,num,sexe,robe,yeux);
+      var num=currentPortee.chiots.length+1;
+      var code=genCodeChiot(currentPortee.femelle,num,sexe,robe,yeux);
       var cid=Date.now().toString();
-      var chiot={
-        id:cid,codeProvisoire:code,
-        nom:nomClient||code,
-        nomClient:nomClient,
-        sexe:sexe,robe:robe,yeux:yeux,poids:poids,
-        vendu:false,affectation:null,
-        etapes:{verm1:false,verm2:false,verm3:false,veto1:false,veto2:false,vaccin:false,puce:false},
-        infoComplementaire:'',
-      };
-      portee.chiots.push(chiot);
-      autoCreatePedigreeFiche(cid,code,sexe,yeux,portee);
+      var chiot={id:cid,codeProvisoire:code,nom:nomClient||code,nomClient:nomClient,sexe:sexe,robe:robe,yeux:yeux,poids:poids,vendu:false,affectation:null,etapes:{verm1:false,verm2:false,verm3:false,veto1:false,veto2:false,vaccin:false,puce:false},infoComplementaire:''};
+      currentPortee.chiots.push(chiot);
+      autoCreatePedigreeFiche(cid,code,sexe,yeux,currentPortee);
       saveState();
-      // Clear form
       if(robeInp)robeInp.value='';
       if(yeuxInp)yeuxInp.value='';
       if(nomInp)nomInp.value='';
       if(poidsInp)poidsInp.value='';
-      renderChiotsForm(pid);
-      renderPortees();
-      populateChiotSel();
+      renderChiotsForm(pid);renderPortees();populateChiotSel();
       toast('✅ '+code+' ajouté');
-    };
-  }
+    };  }
 }
 
 function delChiotPortee(pid, cid){
@@ -1303,16 +1294,15 @@ function addChiotModal(pid){
   if(!portee && window._currentPorteeId){
     portee=(state.portees||[]).find(function(p){return p.id===window._currentPorteeId;});
   }
-  if(!portee){
-    // Last resort: use stored portee object
-    if(window._currentPorteeObj){
-      portee=window._currentPorteeObj;
-      if(!state.portees)state.portees=[];
-      state.portees.push(portee);
-    }
+  if(!portee && window._currentPorteeObj){
+    // Portee exists in memory but not in state yet - add it
+    portee=window._currentPorteeObj;
+    if(!state.portees)state.portees=[];
+    var exists=state.portees.find(function(p){return p.id===portee.id;});
+    if(!exists)state.portees.push(portee);
   }
   if(!portee){
-    toast('Portée introuvable — allez dans Portées actives et cliquez à nouveau');
+    toast('Portée introuvable — fermez et rouvrez la fiche');
     return;
   }
   if(!portee.chiots) portee.chiots=[];
