@@ -218,7 +218,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.7a.10 — 26 août 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a.12 — 26 août 2026</p>
     </div>
   </div>
 </div>
@@ -227,7 +227,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
 <div id="screen-admin" class="screen">
   <div class="topbar">
     <div class="topbar-brand"><span style="font-size:1.2rem">🌸</span><h2>Pomsky de Lilou</h2></div>
-    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.10</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
+    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.12</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
   </div>
   <nav class="bottom-nav">
     <button class="active" data-panel="tableau"><span class="ni">📊</span>Tableau</button>
@@ -314,7 +314,33 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
         <div class="card" id="chiots-form-card" style="display:none">
           <h2 style="margin-bottom:.5rem">Chiots de la portée</h2>
           <div id="chiots-form-list"></div>
-          <button class="btn btn-ok btn-sm" id="btn-add-chiot" style="margin-top:.5rem">➕ Ajouter un chiot</button>
+          <!-- Formulaire ajout chiot -->
+          <div id="chiot-add-form" style="background:var(--parchment);border-radius:var(--radius-sm);padding:.8rem;margin-top:.6rem;border:1.5px solid var(--border)">
+            <h3 style="margin-bottom:.6rem">Nouveau chiot</h3>
+            <div class="form-row">
+              <div class="field"><label>Sexe</label>
+                <select id="new-chiot-sexe"><option value="F">♀ Femelle</option><option value="M">♂ Mâle</option></select>
+              </div>
+              <div class="field"><label>Robe</label>
+                <input type="text" id="new-chiot-robe" placeholder="ex: GrisLoup, BlackTan">
+              </div>
+              <div class="field"><label>Yeux</label>
+                <input type="text" id="new-chiot-yeux" placeholder="ex: Bleu, Marron, Vairons">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="field"><label>Nom choisi (optionnel)</label>
+                <input type="text" id="new-chiot-nom" placeholder="Nom définitif si connu">
+              </div>
+              <div class="field"><label>Poids naissance (g)</label>
+                <input type="number" id="new-chiot-poids" placeholder="350">
+              </div>
+            </div>
+            <div style="font-size:.75rem;color:var(--muted);margin-bottom:.5rem">
+              Code provisoire généré auto : <span id="code-preview" style="font-weight:600;color:var(--forest)">—</span>
+            </div>
+            <button class="btn btn-ok btn-sm" id="btn-add-chiot">➕ Ajouter ce chiot</button>
+          </div>
         </div>
       </div>
     </div>
@@ -613,7 +639,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
           <div style="display:flex;gap:.6rem;flex-wrap:wrap">
             <button class="btn btn-ok" id="btn-save-animal" onclick="saveAnimal()">💾 Enregistrer</button>
             <button class="btn btn-secondary btn-sm" id="btn-cancel-animal" onclick="cancelAnimalEdit()">✕ Annuler</button>
-            <button class="btn btn-danger btn-sm" id="btn-delete-animal" onclick="deleteAnimal()" style="display:none">🗑️ Supprimer</button>
+            <button class="btn btn-danger btn-sm" id="btn-delete-animal" onclick="deleteAnimal()" style="display:none;margin-left:auto">🗑️ Supprimer cette fiche</button>
           </div>
         </div>
       </div>
@@ -745,6 +771,22 @@ function switchSub(id){
   const tab=par.querySelector('.mod-tab[data-sub="'+id+'"]');if(tab)tab.classList.add('active');
   // Populate pedigree selects when opening the form
   if (id==='ped-new') {
+    // Reset form completely — no pre-fill from previous animal
+    _editingAnimalId = null;
+    var btnSave = document.getElementById('btn-save-animal');
+    if (btnSave) btnSave.textContent = '💾 Enregistrer';
+    var btnDel = document.getElementById('btn-delete-animal');
+    if (btnDel) btnDel.style.display = 'none';
+    // Clear all fields
+    ['pa-nom','pa-surnom','pa-naiss','pa-robe','pa-yeux','pa-puce','pa-affixe',
+     'pa-pere','pa-pere-libre','pa-mere','pa-mere-libre',
+     'pa-gpp','pa-gpp-libre','pa-gmp','pa-gmp-libre',
+     'pa-gpm','pa-gpm-libre','pa-gmm','pa-gmm-libre',
+     'pa-agpp1','pa-agpp2','pa-agpm1','pa-agpm2',
+     'pa-agpat1','pa-agpat2','pa-agmat1','pa-agmat2','pa-notes'
+    ].forEach(function(fid){var el=document.getElementById(fid);if(el)el.value='';});
+    document.getElementById('pa-sexe').value='F';
+    document.getElementById('pa-statut').value='actif';
     setTimeout(populatePedigreeSelects, 50);
   }
   // Si on va sur "Animaux", annuler l'édition en cours
@@ -948,49 +990,80 @@ function savePortee(){
 }
 
 function renderChiotsForm(pid){
-  var portee = (state.portees||[]).find(function(p){return p.id===pid;});
-  if(!portee) return;
-  var list = document.getElementById('chiots-form-list');
-  if(!list) return;
-  list.innerHTML = '';
+  var portee=(state.portees||[]).find(function(p){return p.id===pid;});
+  if(!portee)return;
+  var list=document.getElementById('chiots-form-list');
+  if(!list)return;
+  list.innerHTML='';
   if(!(portee.chiots||[]).length){
-    list.innerHTML = '<p style="color:var(--muted);font-size:.82rem">Aucun chiot déclaré.</p>';
-  } else {
+    list.innerHTML='<p style="color:var(--muted);font-size:.82rem;margin-bottom:.5rem">Aucun chiot déclaré.</p>';
+  }else{
     portee.chiots.forEach(function(c,i){
-      var div = document.createElement('div');
-      div.className = 'chiot-card'; div.style.marginBottom='.5rem';
-      var av = document.createElement('div');
-      av.className = 'chiot-av '+(c.sexe==='M'?'male':'female');
-      av.textContent = c.sexe==='M'?'♂':'♀';
-      var info = document.createElement('div'); info.style.flex='1';
-      info.innerHTML = '<div style="font-size:.82rem;font-weight:600">'+(c.codeProvisoire||c.nom||'#'+(i+1))+'</div>'
-        +'<div style="font-size:.7rem;color:var(--muted)">'+(c.robe||'')+' · '+(c.yeux||'')+'</div>';
-      var del = document.createElement('button');
-      del.className='btn btn-danger btn-sm'; del.textContent='✕';
-      del.onclick=(function(pp,ci){return function(){delChiotPortee(pp,ci);};})(pid,c.id);
-      div.appendChild(av); div.appendChild(info); div.appendChild(del);
+      var div=document.createElement('div');
+      div.className='chiot-card';div.style.marginBottom='.5rem';
+      var av=document.createElement('div');
+      av.className='chiot-av '+(c.sexe==='M'?'male':'female');
+      av.textContent=c.sexe==='M'?'♂':'♀';
+      var info=document.createElement('div');info.style.flex='1';
+      info.innerHTML='<div style="font-size:.82rem;font-weight:600">'+(c.codeProvisoire||c.nom||'#'+(i+1))+'</div>'
+        +(c.nomClient?'<div style="font-size:.7rem;color:var(--moss)">Nom client : '+c.nomClient+'</div>':'')
+        +'<div style="font-size:.7rem;color:var(--muted)">'+(c.robe||'')+(c.yeux?' · '+c.yeux:'')+(c.poids?' · '+c.poids+'g':'')+'</div>';
+      var del=document.createElement('button');
+      del.className='btn btn-danger btn-sm';del.textContent='✕';
+      del.onclick=(function(p,ci){return function(){delChiotPortee(p,ci);};})(pid,c.id);
+      div.appendChild(av);div.appendChild(info);div.appendChild(del);
       list.appendChild(div);
     });
   }
-  var addBtn = document.getElementById('btn-add-chiot');
+  // Wire up the add form
+  var sexeSel=document.getElementById('new-chiot-sexe');
+  var robeInp=document.getElementById('new-chiot-robe');
+  var yeuxInp=document.getElementById('new-chiot-yeux');
+  var nomInp=document.getElementById('new-chiot-nom');
+  var poidsInp=document.getElementById('new-chiot-poids');
+  var preview=document.getElementById('code-preview');
+  // Update preview on input
+  function updatePreview(){
+    var num=(portee.chiots||[]).length+1;
+    var code=genCodeChiot(portee.femelle,num,sexeSel?sexeSel.value:'F',robeInp?robeInp.value:'',yeuxInp?yeuxInp.value:'');
+    if(preview)preview.textContent=code;
+  }
+  if(sexeSel)sexeSel.onchange=updatePreview;
+  if(robeInp)robeInp.oninput=updatePreview;
+  if(yeuxInp)yeuxInp.oninput=updatePreview;
+  updatePreview();
+  var addBtn=document.getElementById('btn-add-chiot');
   if(addBtn){
-    addBtn.onclick = function(){
-      var sexe = confirm('Mâle ?') ? 'M' : 'F';
-      var robe = prompt('Robe (ex: GrisLoup, BlackTan) :') || '';
-      var yeux = prompt('Yeux (ex: Bleu, Marron, Bicolore) :') || '';
-      var num = (portee.chiots||[]).length + 1;
-      var code = genCodeChiot(portee.femelle, num, sexe, robe, yeux);
-      var cid = Date.now().toString();
-      var chiot = {
-        id:cid, codeProvisoire:code, nom:code,
-        sexe:sexe, robe:robe, yeux:yeux, vendu:false, affectation:null,
+    addBtn.onclick=function(){
+      var sexe=sexeSel?sexeSel.value:'F';
+      var robe=robeInp?robeInp.value.trim():'';
+      var yeux=yeuxInp?yeuxInp.value.trim():'';
+      var nomClient=nomInp?nomInp.value.trim():'';
+      var poids=poidsInp?poidsInp.value:'';
+      var num=(portee.chiots||[]).length+1;
+      var code=genCodeChiot(portee.femelle,num,sexe,robe,yeux);
+      var cid=Date.now().toString();
+      var chiot={
+        id:cid,codeProvisoire:code,
+        nom:nomClient||code,
+        nomClient:nomClient,
+        sexe:sexe,robe:robe,yeux:yeux,poids:poids,
+        vendu:false,affectation:null,
         etapes:{verm1:false,verm2:false,verm3:false,veto1:false,veto2:false,vaccin:false,puce:false},
         infoComplementaire:'',
       };
       portee.chiots.push(chiot);
-      autoCreatePedigreeFiche(cid, code, sexe, yeux, portee);
-      saveState(); renderChiotsForm(pid); renderPortees(); populateChiotSel();
-      toast('✅ ' + code + ' ajouté');
+      autoCreatePedigreeFiche(cid,code,sexe,yeux,portee);
+      saveState();
+      // Clear form
+      if(robeInp)robeInp.value='';
+      if(yeuxInp)yeuxInp.value='';
+      if(nomInp)nomInp.value='';
+      if(poidsInp)poidsInp.value='';
+      renderChiotsForm(pid);
+      renderPortees();
+      populateChiotSel();
+      toast('✅ '+code+' ajouté');
     };
   }
 }
@@ -1257,36 +1330,95 @@ function saveClient(){
     createdAt:new Date().toISOString()};
   if(chiot)(state.portees||[]).forEach(p=>{const c=(p.chiots||[]).find(x=>x.id===chiot);if(c)c.vendu=true;});
   if(!state.clients)state.clients=[];
-  state.clients.unshift(client);saveState();toast('✅ Dossier créé');
+  if(_editingClientId){
+    state.clients=(state.clients||[]).map(function(x){
+      if(x.id!==_editingClientId)return x;
+      client.id=_editingClientId;client.createdAt=x.createdAt||client.createdAt;return client;
+    });
+    _editingClientId=null;
+    var btnC=document.getElementById('btn-save-client');
+    if(btnC)btnC.textContent='💾 Enregistrer la fiche';
+    saveState();toast('✅ Fiche mise à jour');
+  }else{
+    state.clients.unshift(client);saveState();toast('✅ Dossier créé');
+  }
   ['c-prenom','c-nom','c-tel','c-email','c-prix','c-visite','c-depart','c-notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   switchSub('crm-liste');renderCRM();
 }
 function renderCRM(){
   populateChiotSel();
-  const container=document.getElementById('crm-container');if(!container)return;
-  if(!(state.clients||[]).length){container.innerHTML='<div class="card"><p style="color:var(--muted);font-size:.83rem">Aucun dossier client.</p></div>';
+  var container=document.getElementById('crm-container');
+  if(!container)return;
+  if(!(state.clients||[]).length){
+    container.innerHTML='<div class="card"><p style="color:var(--muted);font-size:.83rem">Aucune fiche famille.</p></div>';
   }else{
-    container.innerHTML=(state.clients||[]).map(c=>{
-      const recu=(c.paiements||[]).filter(p=>p.recu).reduce((a,p)=>a+p.montant,0);
-      const pct=c.prix?Math.round(recu/c.prix*100):0;
-      return `<div class="crm-card" onclick="openClientModal('${c.id}')" style="cursor:pointer">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start">
-          <div><div class="crm-name">${c.prenom} ${c.nom}</div><div class="crm-meta">${c.tel} · ${c.email}</div></div>
-          <span class="badge badge-${pct===100?'ok':pct>0?'warn':'alert'}">${pct}%</span>
-        </div>
-        <div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-top:.4rem;font-size:.72rem">
-          ${c.visite?`<span class="cal-event rdv">👤 ${fmtShort(c.visite)}</span>`:''}
-          ${c.depart?`<span class="cal-event rdv">✈️ ${fmtShort(c.depart)}</span>`:''}
-          <span class="badge badge-${c.paiement==='3fois'?'info':'ok'}">${c.paiement==='3fois'?'3x':'Comptant'}</span>
-          ${c.chequeSteril&&!c.chequeSteril.rendu?'<span class="badge badge-warn">Caution stéril.</span>':''}
-        </div>
-        <div class="prog-bar-bg"><div class="prog-bar-fill" style="width:${pct}%;background:var(--ok)"></div></div>
-      </div>`;
-    }).join('');
+    container.innerHTML='';
+    (state.clients||[]).forEach(function(c){
+      var recu=(c.paiements||[]).filter(function(p){return p.recu;}).reduce(function(a,p){return a+p.montant;},0);
+      var pct=c.prix?Math.round(recu/c.prix*100):0;
+      var badgeCls=pct===100?'badge-ok':pct>0?'badge-warn':'badge-alert';
+      var card=document.createElement('div');
+      card.className='crm-card';
+      card.innerHTML=
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.4rem">'
+        +'<div style="cursor:pointer;flex:1" data-cid="'+c.id+'" onclick="openClientModal(this.dataset.cid)">'
+        +'<div class="crm-name">'+c.prenom+' '+c.nom+'</div>'
+        +'<div class="crm-meta">'+(c.tel||'')+(c.email?' · '+c.email:'')+'</div>'
+        +(c.adresse?'<div class="crm-meta">'+c.adresse+'</div>':'')
+        +'</div>'
+        +'<div style="display:flex;gap:.3rem;align-items:flex-start">'
+        +'<span class="badge '+badgeCls+'">'+pct+'%</span>'
+        +'<button class="btn btn-secondary btn-sm" data-cid="'+c.id+'" onclick="editClient(this.dataset.cid)">✏️</button>'
+        +'<button class="btn btn-danger btn-sm" data-cid="'+c.id+'" onclick="deleteClientDirect(this.dataset.cid)">🗑️</button>'
+        +'</div></div>'
+        +'<div style="display:flex;gap:.35rem;flex-wrap:wrap;font-size:.72rem;margin-bottom:.35rem">'
+        +(c.visite?'<span class="cal-event rdv">👤 '+fmtShort(c.visite)+'</span>':'')
+        +(c.depart?'<span class="cal-event rdv">✈️ '+fmtShort(c.depart)+'</span>':'')
+        +'<span class="badge badge-'+(c.paiement==='3fois'?'info':'ok')+'">'+(c.paiement==='3fois'?'3x':'Comptant')+'</span>'
+        +(c.chequeSteril&&!c.chequeSteril.rendu?'<span class="badge badge-warn">Caution stéril.</span>':'')
+        +'</div>'
+        +'<div class="prog-bar-bg"><div class="prog-bar-fill" style="width:'+pct+'%;background:var(--ok)"></div></div>';
+      container.appendChild(card);
+    });
   }
-  const al=document.getElementById('actions-com-list');
-  if(al){al.innerHTML=ACTIONS_COM.map(a=>{const done=!!(state.actionsCom||{})[a.id];return `<div style="display:flex;align-items:center;gap:.65rem;padding:.5rem .55rem;border-radius:7px;margin-bottom:.28rem;background:${done?'#edf7f0':'var(--cream)'}"><input type="checkbox" ${done?'checked':''} onchange="toggleAct('${a.id}',this.checked)" style="width:17px;height:17px;cursor:pointer"><span style="font-size:.86rem;${done?'text-decoration:line-through;color:var(--muted)':''}">${a.label}</span></div>`;}).join('');}
+  var al=document.getElementById('actions-com-list');
+  if(al){al.innerHTML=ACTIONS_COM.map(function(a){
+    var done=!!(state.actionsCom||{})[a.id];
+    return '<div style="display:flex;align-items:center;gap:.65rem;padding:.5rem .55rem;border-radius:7px;margin-bottom:.28rem;background:'+(done?'#edf7f0':'var(--cream)')+'"><input type="checkbox" '+(done?'checked':'')+' onchange="toggleAct(''+a.id+'',this.checked)" style="width:17px;height:17px;cursor:pointer"><span style="font-size:.86rem;'+(done?'text-decoration:line-through;color:var(--muted)':'')+'">'+a.label+'</span></div>';
+  }).join('');}
 }
+
+function deleteClientDirect(id){
+  var c=(state.clients||[]).find(function(x){return x.id===id;});
+  if(!c)return;
+  if(!confirm('Supprimer la fiche de '+c.prenom+' '+c.nom+' ?'))return;
+  state.clients=(state.clients||[]).filter(function(x){return x.id!==id;});
+  saveState();renderCRM();toast('🗑️ Fiche supprimée');
+}
+
+function editClient(id){
+  var c=(state.clients||[]).find(function(x){return x.id===id;});
+  if(!c)return;
+  // Pre-fill the form
+  document.getElementById('c-prenom').value=c.prenom||'';
+  document.getElementById('c-nom').value=c.nom||'';
+  document.getElementById('c-tel').value=c.tel||'';
+  document.getElementById('c-email').value=c.email||'';
+  if(document.getElementById('c-adresse'))document.getElementById('c-adresse').value=c.adresse||'';
+  document.getElementById('c-prix').value=c.prix||'';
+  document.getElementById('c-paiement').value=c.paiement||'comptant';
+  document.getElementById('c-type-resa').value=c.typeResa||'nee';
+  document.getElementById('c-visite').value=c.visite||'';
+  document.getElementById('c-depart').value=c.depart||'';
+  document.getElementById('c-notes').value=c.notes||'';
+  // Mark as editing
+  _editingClientId=id;
+  var btn=document.getElementById('btn-save-client');
+  if(btn)btn.textContent='💾 Mettre à jour';
+  switchSub('crm-new');
+  toast('Fiche chargée — modifiez et sauvegardez');
+}
+
 function toggleAct(id,v){if(!state.actionsCom)state.actionsCom={};state.actionsCom[id]=v;saveState();}
 function openClientModal(id){
   const c=(state.clients||[]).find(x=>x.id===id);if(!c)return;
