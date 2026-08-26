@@ -218,7 +218,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.7a.18 — 26 août 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a.19 — 26 août 2026</p>
     </div>
   </div>
 </div>
@@ -227,7 +227,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
 <div id="screen-admin" class="screen">
   <div class="topbar">
     <div class="topbar-brand"><span style="font-size:1.2rem">🌸</span><h2>Pomsky de Lilou</h2></div>
-    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.18</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
+    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.19</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
   </div>
   <nav class="bottom-nav">
     <button class="active" data-panel="tableau"><span class="ni">📊</span>Tableau</button>
@@ -694,6 +694,9 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
 <div id="toast" class="toast"></div>
 <script>
 // ══════ DATA ══════
+var _editingAnimalId = null;
+var _editingClientId = null;
+var _currentPorteeId = null;
 const FEMELLES=[{name:'Paoma',r:true},{name:'Coahoma',r:true},{name:'Abby',r:false},{name:'Alaya',r:false},{name:'Pepper',r:true},{name:'Mystic',r:true},{name:'Maika',r:true},{name:'Loupette',r:true},{name:'Pitch',r:true},{name:'Linette',r:false},{name:'Nina',r:true},{name:'Brooke',r:false},{name:'Baboo',r:false},{name:'Kumi',r:false}];
 const ACTIONS_COM=[{id:'photos',label:'📸 Photos des chiots réalisées'},{id:'site',label:'🌐 Site internet mis à jour'},{id:'reseaux',label:'📱 Réseaux sociaux publiés'},{id:'annonces',label:'📋 Annonces mises à jour'},{id:'contrats',label:'📄 Contrats de vente préparés'}];
 const DEP_CAT={nourriture:'🥩 Nourriture',vaccins:'💉 Vaccins',veterinaire:'🏥 Vétérinaire',equipement:'🔧 Équipements',hygiene:'🧴 Hygiène',autre:'📦 Autre'};
@@ -1199,8 +1202,11 @@ function renderPortees(){
 }
 
 function openPorteeDetail(pid){
+  window._currentPorteeId = pid;
+  try{var ls=localStorage.getItem('pomsky_v2');if(ls)mergeState(JSON.parse(ls));}catch(e){}
   var portee=(state.portees||[]).find(function(p){return p.id===pid;});
   if(!portee) return;
+  window._currentPorteeObj = portee;
   var chiots=portee.chiots||[];
   document.getElementById('mp-title').textContent=portee.femelle+' × '+portee.male+' — '+fmtShort(portee.naissance);
   var etapesPortee=[
@@ -1290,12 +1296,23 @@ function openPorteeDetail(pid){
 }
 
 function addChiotModal(pid){
-  // Force reload state from localStorage in case it changed
+  // Try multiple sources to find the portee
   try{var r=localStorage.getItem('pomsky_v2');if(r)mergeState(JSON.parse(r));}catch(e){}
   var portee=(state.portees||[]).find(function(p){return p.id===pid;});
+  // Also try window._currentPorteeId as fallback
+  if(!portee && window._currentPorteeId){
+    portee=(state.portees||[]).find(function(p){return p.id===window._currentPorteeId;});
+  }
   if(!portee){
-    toast('❌ Portée introuvable — rechargez la page');
-    console.log('pid cherché:',pid,'portees dispo:',(state.portees||[]).map(function(p){return p.id;}));
+    // Last resort: use stored portee object
+    if(window._currentPorteeObj){
+      portee=window._currentPorteeObj;
+      if(!state.portees)state.portees=[];
+      state.portees.push(portee);
+    }
+  }
+  if(!portee){
+    toast('Portée introuvable — allez dans Portées actives et cliquez à nouveau');
     return;
   }
   if(!portee.chiots) portee.chiots=[];
