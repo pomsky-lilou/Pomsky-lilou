@@ -218,7 +218,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.7a.23 — 26 août 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a.24 — 26 août 2026</p>
     </div>
   </div>
 </div>
@@ -227,7 +227,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
 <div id="screen-admin" class="screen">
   <div class="topbar">
     <div class="topbar-brand"><span style="font-size:1.2rem">🌸</span><h2>Pomsky de Lilou</h2></div>
-    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.23</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
+    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.24</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
   </div>
   <nav class="bottom-nav">
     <button class="active" data-panel="tableau"><span class="ni">📊</span>Tableau</button>
@@ -2183,47 +2183,47 @@ function generateContrat(clientId){
   var puce=chiot?(chiot.puce||'en attente'):'en attente';
   var prix=c.prix||0;
   var emailConfig=state.emailConfig||'laurencebabb@gmail.com';
-  var paiements=(c.paiements||[]).map(function(p){return p.label+' : '+p.montant+'EUR';}).join(' | ');
+  var paiements=(c.paiements||[]).map(function(p){return p.label+' : '+p.montant+'EUR';}).join('%0D%0A');
 
-  var bodyLines=[
-    'CONTRAT DE VENTE D UN CHIOT DE TYPE POMSKY valant ATTESTATION DE CESSION',
-    '',
-    'VENDEUR : Madame DELBOUIS Laurence',
-    '46 chemin du Ribarot 31700 DAUX - Tel : 06-08-84-75-89',
-    'Email : laurencebabb@gmail.com - SIRET : 82194514400011',
-    '',
-    'ACQUEREUR : '+(c.prenom||'')+' '+(c.nom||''),
-    'Adresse : '+(c.adresse||'non renseignee'),
-    'Tel : '+(c.tel||'—')+' - Email : '+(c.email||'—'),
-    '',
-    'Art 1 - CESSION',
-    'Cede le '+dateAuj+' a Daux (31)',
-    'Chiot de type POMSKY ne le '+naiss,
-    'Sexe : '+sexeTxt+' - Robe : '+robe,
-    'Nomme : '+nomDef,
-    'Puce : '+puce,
-    'Mere : '+mere+' de L Oree des Moonskys',
-    'Pere : '+pere+' de L Oree des Moonskys',
-    '',
-    'Art 4 - PRIX',
-    'Prix de vente : '+prix+'EUR (dont ristourne sterilisation 2000EUR en cheque non encaisse)',
-    '',
-    'Art 5 - PAIEMENT',
-    paiements,
-    '',
-    'Fait a DAUX, le '+dateAuj+', en deux exemplaires',
-    '',
-    'Le vendeur : Laurence DELBOUIS',
-    '',
-    "L acquereur : "+(c.prenom||'')+' '+(c.nom||'')
-  ];
-  var body=encodeURIComponent(bodyLines.join('%0D%0A'));
+  var nl='%0D%0A';
+  var body=
+    'CONTRAT DE VENTE D UN CHIOT DE TYPE POMSKY'+nl+
+    'valant ATTESTATION DE CESSION'+nl+nl+
+    'VENDEUR : Madame DELBOUIS Laurence'+nl+
+    '46 chemin du Ribarot 31700 DAUX'+nl+
+    'Tel : 06-08-84-75-89'+nl+
+    'Email : laurencebabb@gmail.com'+nl+
+    'SIRET : 82194514400011'+nl+nl+
+    'ACQUEREUR : '+encodeURIComponent(c.prenom||'')+' '+encodeURIComponent(c.nom||'')+nl+
+    'Adresse : '+encodeURIComponent(c.adresse||'non renseignee')+nl+
+    'Tel : '+encodeURIComponent(c.tel||'—')+nl+
+    'Email : '+encodeURIComponent(c.email||'—')+nl+nl+
+    'Art 1 - CESSION'+nl+
+    'Cede le '+encodeURIComponent(dateAuj)+' a Daux (31)'+nl+
+    'Chiot de type POMSKY ne le '+encodeURIComponent(naiss)+nl+
+    'Sexe : '+sexeTxt+' - Robe : '+encodeURIComponent(robe)+nl+
+    'Nomme : '+encodeURIComponent(nomDef)+nl+
+    'Puce : '+encodeURIComponent(puce)+nl+
+    'Mere : '+encodeURIComponent(mere+' de L Oree des Moonskys')+nl+
+    'Pere : '+encodeURIComponent(pere+' de L Oree des Moonskys')+nl+nl+
+    'Art 2 - DESTINATION'+nl+
+    'Le chiot est cede a titre d animal de compagnie exclusivement.'+nl+
+    'Option obligation de sterilisation : sterilisation obligatoire entre 6 et 12 mois.'+nl+nl+
+    'Art 4 - PRIX'+nl+
+    'Prix de vente : '+prix+'EUR'+nl+
+    'Ristourne sterilisation : 2000EUR (cheque non encaisse)'+nl+nl+
+    'Art 5 - PAIEMENT'+nl+
+    paiements+nl+nl+
+    'Fait a DAUX, le '+encodeURIComponent(dateAuj)+', en deux exemplaires'+nl+nl+
+    'Le vendeur : Laurence DELBOUIS'+nl+nl+
+    "L acquereur : "+encodeURIComponent((c.prenom||'')+' '+(c.nom||''));
+
   var subject=encodeURIComponent('Contrat de vente - '+nomDef+' - L Oree des Moonskys');
-  window.location.href='mailto:'+(c.email||'')+
+  window.location.href='mailto:'+encodeURIComponent(c.email||'')+
     '?cc='+encodeURIComponent(emailConfig)+
     '&subject='+subject+
     '&body='+body;
-  toast('Email contrat prepare');
+  toast('Email contrat prepare dans votre messagerie');
 }
 
 function generateCertifFromFamille(clientId){
