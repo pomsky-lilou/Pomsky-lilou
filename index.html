@@ -187,11 +187,11 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
 .animal-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;font-weight:700;color:white;flex-shrink:0}
 .animal-av.M{background:var(--info)}.animal-av.F{background:#e91e8c}
 
-.nav-badge{position:absolute;top:2px;right:2px;border-radius:50%;min-width:16px;height:16px;padding:0 3px;font-size:.58rem;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid var(--forest)}
+.nav-badge{position:absolute;top:3px;right:3px;border-radius:50%;min-width:14px;height:14px;padding:0 2px;font-size:.55rem;font-weight:700;display:flex;align-items:center;justify-content:center;z-index:10;line-height:1}
 .nav-badge.rouge{background:#c0392b;color:white}
 .nav-badge.orange{background:#e67e22;color:white}
 .nav-badge.bleu{background:#2980b9;color:white}
-.bottom-nav button{position:relative}
+.bottom-nav button{position:relative;overflow:visible}
 .chiot-dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:2px}
 .chiot-dot.rouge{background:#c0392b}
 .chiot-dot.orange{background:#e67e22}
@@ -218,7 +218,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.7a.7 — 26 août 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a.9 — 26 août 2026</p>
     </div>
   </div>
 </div>
@@ -227,7 +227,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
 <div id="screen-admin" class="screen">
   <div class="topbar">
     <div class="topbar-brand"><span style="font-size:1.2rem">🌸</span><h2>Pomsky de Lilou</h2></div>
-    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.7</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
+    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.9</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
   </div>
   <nav class="bottom-nav">
     <button class="active" data-panel="tableau"><span class="ni">📊</span>Tableau</button>
@@ -518,8 +518,9 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
           <button class="btn btn-info btn-sm" id="btn-sync-ped" style="margin-left:auto">🔄 Sync depuis Bébés</button>
           <span id="ped-count" style="font-size:.75rem;color:var(--muted);font-family:'DM Mono',monospace"></span>
         </div>
-        <div style="background:#e8f4fd;border:1.5px solid #aed6f1;border-radius:8px;padding:.6rem .9rem;margin-bottom:.6rem;font-size:.8rem;color:#1a5276">
-          💡 Les chiots ajoutés dans <strong>Bébés</strong> créent automatiquement leur fiche Pedigree. Complétez ensuite robe, puce et grands-parents.
+        <div style="background:#e8f4fd;border:1.5px solid #aed6f1;border-radius:8px;padding:.6rem .9rem;margin-bottom:.6rem;font-size:.8rem;color:#1a5276;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.4rem">
+          <span>💡 Les chiots ajoutés dans <strong>Bébés</strong> créent automatiquement leur fiche Pedigree.</span>
+          <button class="btn btn-info btn-sm" onclick="forceReloadFirebase()">🔄 Recharger depuis Firebase</button>
         </div>
         <div id="ped-animaux-list"></div>
       </div>
@@ -692,15 +693,27 @@ function saveState(){
   if(window._fb&&window._fb.connected)window._fb.save(s);
 }
 function loadState(){
-  try{let r=null;try{r=localStorage.getItem('pomsky_v2');}catch(e){r=_mem.s||null;}if(r)mergeState(JSON.parse(r));}catch(e){}
-  if(window._fb)window._fb.load(function(d){if(d){mergeState(d);try{localStorage.setItem('pomsky_v2',JSON.stringify(d));}catch(e){}renderAll();}});
+  try{var r=null;try{r=localStorage.getItem('pomsky_v2');}catch(e){r=_mem.s||null;}if(r)mergeState(JSON.parse(r));}catch(e){}
+  if(window._fb)window._fb.load(function(d){
+    if(d){
+      mergeState(d);
+      try{localStorage.setItem('pomsky_v2',JSON.stringify(d));}catch(e){}
+      // Only render if logged in
+      if(state.currentUser){renderAll();updateNavBadges();}
+    }
+  });
 }
 function mergeState(p){
   ['accounts','tasksMatin','tasksSoir','periodics','dayData','reports','alerts','messages','ardoise','lastSeen','saillies','portees','clients','depenses','emailConfig','actionsCom','animaux'].forEach(k=>{if(p[k]!==undefined&&p[k]!==null)state[k]=p[k];});
 }
 function startSync(){
   if(!window._fb)return;
-  window._fb.listen(function(d){if(!d)return;mergeState(d);try{localStorage.setItem('pomsky_v2',JSON.stringify(d));}catch(e){}renderAll();});
+  window._fb.listen(function(d){
+    if(!d)return;
+    mergeState(d);
+    try{localStorage.setItem('pomsky_v2',JSON.stringify(d));}catch(e){}
+    if(state.currentUser){renderAll();updateNavBadges();}
+  });
 }
 
 // ══════ UTILS ══════
@@ -1844,6 +1857,22 @@ function calcFamilleBadge(){
     if(c.chequeSteril&&!c.chequeSteril.rendu) count++;
   });
   return count>0?{level:'orange',count:count}:{level:'vert',count:0};
+}
+
+function forceReloadFirebase(){
+  if(!window._fb){toast('Firebase non connecté');return;}
+  toast('🔄 Rechargement en cours...');
+  window._fb.load(function(d){
+    if(d){
+      mergeState(d);
+      try{localStorage.setItem('pomsky_v2',JSON.stringify(d));}catch(e){}
+      renderAll();
+      updateNavBadges();
+      toast('✅ Données rechargées — '+(state.animaux||[]).length+' fiches pedigree');
+    } else {
+      toast('⚠️ Aucune donnée Firebase trouvée');
+    }
+  });
 }
 
 function cancelAnimalEdit(){
