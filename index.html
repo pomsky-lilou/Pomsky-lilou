@@ -218,7 +218,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.7a.16 — 26 août 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a.18 — 26 août 2026</p>
     </div>
   </div>
 </div>
@@ -227,7 +227,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
 <div id="screen-admin" class="screen">
   <div class="topbar">
     <div class="topbar-brand"><span style="font-size:1.2rem">🌸</span><h2>Pomsky de Lilou</h2></div>
-    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.16</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
+    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.18</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
   </div>
   <nav class="bottom-nav">
     <button class="active" data-panel="tableau"><span class="ni">📊</span>Tableau</button>
@@ -786,22 +786,24 @@ function switchSub(id){
   const tab=par.querySelector('.mod-tab[data-sub="'+id+'"]');if(tab)tab.classList.add('active');
   // Populate pedigree selects when opening the form
   if (id==='ped-new') {
-    // Reset form completely — no pre-fill from previous animal
-    _editingAnimalId = null;
-    var btnSave = document.getElementById('btn-save-animal');
-    if (btnSave) btnSave.textContent = '💾 Enregistrer';
-    var btnDel = document.getElementById('btn-delete-animal');
-    if (btnDel) btnDel.style.display = 'none';
-    // Clear all fields
-    ['pa-nom','pa-surnom','pa-naiss','pa-robe','pa-yeux','pa-puce','pa-affixe',
-     'pa-pere','pa-pere-libre','pa-mere','pa-mere-libre',
-     'pa-gpp','pa-gpp-libre','pa-gmp','pa-gmp-libre',
-     'pa-gpm','pa-gpm-libre','pa-gmm','pa-gmm-libre',
-     'pa-agpp1','pa-agpp2','pa-agpm1','pa-agpm2',
-     'pa-agpat1','pa-agpat2','pa-agmat1','pa-agmat2','pa-notes'
-    ].forEach(function(fid){var el=document.getElementById(fid);if(el)el.value='';});
-    document.getElementById('pa-sexe').value='F';
-    document.getElementById('pa-statut').value='actif';
+    // Only reset if NOT called from openAnimalDetail (editing mode)
+    if (!_editingAnimalId) {
+      var btnSave = document.getElementById('btn-save-animal');
+      if (btnSave) btnSave.textContent = '💾 Enregistrer';
+      var btnDel = document.getElementById('btn-delete-animal');
+      if (btnDel) btnDel.style.display = 'none';
+      ['pa-nom','pa-surnom','pa-naiss','pa-robe','pa-yeux','pa-puce','pa-affixe',
+       'pa-pere','pa-pere-libre','pa-mere','pa-mere-libre',
+       'pa-gpp','pa-gpp-libre','pa-gmp','pa-gmp-libre',
+       'pa-gpm','pa-gpm-libre','pa-gmm','pa-gmm-libre',
+       'pa-agpp1','pa-agpp2','pa-agpm1','pa-agpm2',
+       'pa-agpat1','pa-agpat2','pa-agmat1','pa-agmat2','pa-notes'
+      ].forEach(function(fid){var el=document.getElementById(fid);if(el)el.value='';});
+      var sexeEl=document.getElementById('pa-sexe');
+      if(sexeEl)sexeEl.value='F';
+      var statEl=document.getElementById('pa-statut');
+      if(statEl)statEl.value='actif';
+    }
     setTimeout(populatePedigreeSelects, 50);
   }
   // Si on va sur "Animaux", annuler l'édition en cours
