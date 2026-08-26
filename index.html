@@ -218,7 +218,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.7a.22 — 26 août 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a.23 — 26 août 2026</p>
     </div>
   </div>
 </div>
@@ -227,7 +227,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
 <div id="screen-admin" class="screen">
   <div class="topbar">
     <div class="topbar-brand"><span style="font-size:1.2rem">🌸</span><h2>Pomsky de Lilou</h2></div>
-    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.22</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
+    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.23</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
   </div>
   <nav class="bottom-nav">
     <button class="active" data-panel="tableau"><span class="ni">📊</span>Tableau</button>
@@ -947,7 +947,23 @@ function renderSaillies(){
   });
   if(archived.length){
     container.innerHTML+='<h3 style="margin:.7rem 0 .4rem">Archivées</h3>';
-    archived.forEach(s=>{container.innerHTML+=`<div class="card" style="opacity:.65;margin-bottom:.4rem;display:flex;justify-content:space-between;align-items:center"><div style="font-size:.83rem"><strong>${s.femelle} × ${s.male}</strong> · ${fmtShort(s.date)} <span class="badge badge-muted">${s.statut}</span></div></div>`;});
+    archived.forEach(function(s){
+      var div=document.createElement('div');
+      div.className='card';
+      div.style.cssText='opacity:.65;margin-bottom:.4rem;display:flex;justify-content:space-between;align-items:center';
+      div.innerHTML='<div style="font-size:.83rem"><strong>'+s.femelle+' × '+s.male+'</strong> · '+fmtShort(s.date)+' <span class="badge badge-muted">'+s.statut+'</span></div>';
+      var del=document.createElement('button');
+      del.className='btn btn-danger btn-sm';
+      del.style.cssText='padding:.2rem .45rem;font-size:.7rem';
+      del.textContent='🗑️';
+      del.onclick=(function(sid){return function(){
+        if(!confirm('Supprimer cette saillie ?'))return;
+        state.saillies=(state.saillies||[]).filter(function(x){return x.id!==sid;});
+        saveState();renderSaillies();toast('🗑️ Saillie supprimée');
+      };})(s.id);
+      div.appendChild(del);
+      container.appendChild(div);
+    });
   }
   // Populate saillie select — toutes saillies sauf annulées
   var bSel=document.getElementById('b-saillie');
@@ -1494,6 +1510,10 @@ function renderCRM(){
         +'<button class="btn btn-secondary btn-sm" data-cid="'+c.id+'" onclick="editClient(this.dataset.cid)">✏️</button>'
         +'<button class="btn btn-danger btn-sm" data-cid="'+c.id+'" onclick="deleteClientDirect(this.dataset.cid)">🗑️</button>'
         +'</div></div>'
+        +'<div style="display:flex;gap:.4rem;margin-top:.4rem;padding-top:.4rem;border-top:1px solid var(--border)">'
+        +'<button class="btn btn-info btn-sm" data-cid="'+c.id+'" onclick="generateContrat(this.dataset.cid)">📄 Contrat</button>'
+        +(c.chiot?'<button class="btn btn-sm" style="background:var(--amber);color:white" data-cid="'+c.id+'" onclick="generateCertifFromFamille(this.dataset.cid)">🏆 Pedigree</button>':'')
+        +'</div>'
         +'<div style="display:flex;gap:.35rem;flex-wrap:wrap;font-size:.72rem;margin-bottom:.35rem">'
         +(c.visite?'<span class="cal-event rdv">👤 '+fmtShort(c.visite)+'</span>':'')
         +(c.depart?'<span class="cal-event rdv">✈️ '+fmtShort(c.depart)+'</span>':'')
@@ -2144,6 +2164,97 @@ function deleteAnimal(){
   renderAnimaux();
   populateCertSelect();
   toast('🗑️ Fiche supprimée');
+}
+
+
+function generateContrat(clientId){
+  var c=(state.clients||[]).find(function(x){return x.id===clientId;});
+  if(!c){toast('Client introuvable');return;}
+  var chiot=null;var portee=null;
+  (state.portees||[]).forEach(function(p){(p.chiots||[]).forEach(function(ch){if(ch.id===c.chiot){chiot=ch;portee=p;}});});
+  var nomChiot=chiot?(chiot.nomClient||chiot.codeProvisoire):'Non affecte';
+  var nomDef=nomChiot+" de L'Oree des Moonskys";
+  var dateAuj=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'});
+  var sexeTxt=chiot?(chiot.sexe==='M'?'male':'femelle'):'non precise';
+  var robe=chiot?(chiot.robe||'non precise'):'non precise';
+  var mere=portee?portee.femelle:'non precise';
+  var pere=portee?portee.male:'non precise';
+  var naiss=portee?fmtShort(portee.naissance):'non precise';
+  var puce=chiot?(chiot.puce||'en attente'):'en attente';
+  var prix=c.prix||0;
+  var emailConfig=state.emailConfig||'laurencebabb@gmail.com';
+  var paiements=(c.paiements||[]).map(function(p){return p.label+' : '+p.montant+'EUR';}).join(' | ');
+
+  var bodyLines=[
+    'CONTRAT DE VENTE D UN CHIOT DE TYPE POMSKY valant ATTESTATION DE CESSION',
+    '',
+    'VENDEUR : Madame DELBOUIS Laurence',
+    '46 chemin du Ribarot 31700 DAUX - Tel : 06-08-84-75-89',
+    'Email : laurencebabb@gmail.com - SIRET : 82194514400011',
+    '',
+    'ACQUEREUR : '+(c.prenom||'')+' '+(c.nom||''),
+    'Adresse : '+(c.adresse||'non renseignee'),
+    'Tel : '+(c.tel||'—')+' - Email : '+(c.email||'—'),
+    '',
+    'Art 1 - CESSION',
+    'Cede le '+dateAuj+' a Daux (31)',
+    'Chiot de type POMSKY ne le '+naiss,
+    'Sexe : '+sexeTxt+' - Robe : '+robe,
+    'Nomme : '+nomDef,
+    'Puce : '+puce,
+    'Mere : '+mere+' de L Oree des Moonskys',
+    'Pere : '+pere+' de L Oree des Moonskys',
+    '',
+    'Art 4 - PRIX',
+    'Prix de vente : '+prix+'EUR (dont ristourne sterilisation 2000EUR en cheque non encaisse)',
+    '',
+    'Art 5 - PAIEMENT',
+    paiements,
+    '',
+    'Fait a DAUX, le '+dateAuj+', en deux exemplaires',
+    '',
+    'Le vendeur : Laurence DELBOUIS',
+    '',
+    "L acquereur : "+(c.prenom||'')+' '+(c.nom||'')
+  ];
+  var body=encodeURIComponent(bodyLines.join('%0D%0A'));
+  var subject=encodeURIComponent('Contrat de vente - '+nomDef+' - L Oree des Moonskys');
+  window.location.href='mailto:'+(c.email||'')+
+    '?cc='+encodeURIComponent(emailConfig)+
+    '&subject='+subject+
+    '&body='+body;
+  toast('Email contrat prepare');
+}
+
+function generateCertifFromFamille(clientId){
+  var c=(state.clients||[]).find(function(x){return x.id===clientId;});
+  if(!c){toast('Client introuvable');return;}
+  var chiot=null;
+  (state.portees||[]).forEach(function(p){(p.chiots||[]).forEach(function(ch){if(ch.id===c.chiot)chiot=ch;});});
+  var defaut=chiot?(chiot.nomClient||chiot.codeProvisoire||''):'';
+  var nomDef=prompt('Nom de pedigree definitif du chiot :', defaut);
+  if(!nomDef)return;
+  var nomComplet=nomDef+" de L'Oree des Moonskys";
+  // Update chiot in portee
+  (state.portees||[]).forEach(function(p){
+    (p.chiots||[]).forEach(function(ch){
+      if(ch.id===c.chiot){ch.nomClient=nomDef;ch.nom=nomComplet;ch.codeProvisoire=nomComplet;}
+    });
+  });
+  // Update pedigree fiche
+  var anim=(state.animaux||[]).find(function(a){return a.chiotId===c.chiot;});
+  if(anim){anim.nom=nomComplet;anim.surnom=nomDef;anim.autoCreated=false;}
+  saveState();
+  toast('Nom mis a jour : '+nomComplet);
+  setTimeout(function(){
+    var a=(state.animaux||[]).find(function(x){return x.chiotId===c.chiot;});
+    if(a){
+      var sel=document.getElementById('cert-chiot');
+      if(sel)sel.value=a.id;
+      switchPanel('pedigree');
+      setTimeout(function(){switchSub('ped-certificat');genCertificat();},300);
+    }
+  },400);
 }
 
 function cancelAnimalEdit(){
