@@ -724,7 +724,7 @@ function switchPanel(n){
   renderPanel(n);
 }
 function switchSub(id){
-  const par=document.getElementById(id)?.closest('.panel');if(!par)return;
+  const par=document.getElementById(id)&&document.getElementById(id).closest('.panel');if(!par)return;
   par.querySelectorAll('.subtab').forEach(s=>{s.style.display='none';s.classList.remove('active');});
   par.querySelectorAll('.mod-tab').forEach(t=>t.classList.remove('active'));
   const el=document.getElementById(id);if(el){el.style.display='block';el.classList.add('active');}
@@ -1136,7 +1136,7 @@ function openPorteeDetail(pid){
     '<div style="font-size:.82rem;margin-bottom:.7rem">Née le '+fmtShort(portee.naissance)+' · '+chiots.length+' chiots nés · '+portee.nbVivants+' vivants</div>'
     +etapesHTML+chiotsHTML
     +'<div style="margin-top:.7rem">'
-    +'<button class="btn btn-secondary btn-sm" onclick="archiverPortee(''+portee.id+'')">📦 Archiver la portée</button>'
+    +"<button class=\"btn btn-secondary btn-sm\" data-pid=\""+portee.id+"\" onclick=\"archiverPortee(this.dataset.pid)\">📦 Archiver la portée</button>"
     +'</div>';
   openM('modal-portee');
 }
@@ -1282,10 +1282,10 @@ function openClientModal(id){
   document.getElementById('mc-content').innerHTML=`<div style="font-size:.82rem;display:flex;flex-direction:column;gap:.28rem;margin-bottom:.7rem">${c.tel?`<div>📞 ${c.tel}</div>`:''} ${c.email?`<div>📧 ${c.email}</div>`:''} ${c.visite?`<div>👤 Visite : ${fmtShort(c.visite)}</div>`:''} ${c.depart?`<div>✈️ Départ : ${fmtShort(c.depart)}</div>`:''} ${c.notes?`<div>📝 ${c.notes}</div>`:''}</div>
   <h3 style="margin-bottom:.35rem">Paiements (${c.prix}€)</h3>
   <div style="border:1.5px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:.7rem">${ph}</div>
-  <h3 style="margin-bottom:.35rem">Caution stérilisation (${c.chequeSteril?.montant||0}€)</h3>
+  <h3 style="margin-bottom:.35rem">Caution stérilisation (${(c.chequeSteril?c.chequeSteril.montant:0)||0}€)</h3>
   <div style="font-size:.82rem;background:var(--cream);border-radius:8px;padding:.45rem .65rem;display:flex;gap:.4rem;flex-wrap:wrap;align-items:center">
-    ${c.chequeSteril?.recu?'<span class="badge badge-ok">✓ Reçu</span>':`<button class="btn btn-warn btn-sm" onclick="markSterilRecu('${id}')">Marquer reçu</button>`}
-    ${c.chequeSteril?.rendu?'<span class="badge badge-ok">✓ Rendu/détruit</span>':`<button class="btn btn-info btn-sm" onclick="markSterilRendu('${id}')">Rendu/détruit</button>`}
+    ${(c.chequeSteril?c.chequeSteril.recu:false)?'<span class="badge badge-ok">✓ Reçu</span>':`<button class="btn btn-warn btn-sm" onclick="markSterilRecu('${id}')">Marquer reçu</button>`}
+    ${(c.chequeSteril?c.chequeSteril.rendu:false)?'<span class="badge badge-ok">✓ Rendu/détruit</span>':`<button class="btn btn-info btn-sm" onclick="markSterilRendu('${id}')">Rendu/détruit</button>`}
   </div>`;
   openM('modal-client');
 }
@@ -1348,7 +1348,7 @@ function delMsg(id){state.messages=(state.messages||[]).filter(m=>m.id!==id);sav
 function renderMessages(){const list=document.getElementById('msg-list');if(!list)return;const lbl={chiots:'🐶 Chiots',chiens:'🐕 Chiens',info:'ℹ️ Info'};list.innerHTML=!(state.messages||[]).length?'<p style="color:var(--muted);font-size:.83rem">Aucun message.</p>':(state.messages||[]).map(m=>`<div class="msg-item"><div><div style="font-size:.7rem;color:var(--muted)">${lbl[m.type]||m.type} · ${m.date} ${m.time}</div><div style="font-size:.84rem">${m.body}</div></div><button class="btn btn-danger btn-sm" onclick="delMsg('${m.id}')">✕</button></div>`).join('');}
 function sendArdoise(){const inp=document.getElementById('ardoise-input');if(!inp||!inp.value.trim())return;if(!state.ardoise)state.ardoise=[];state.ardoise.push({id:Date.now().toString(),author:state.currentUser.name,role:'admin',text:inp.value.trim(),time:fmtTime(new Date()),date:today()});inp.value='';saveState();renderArdoise();}
 function clearArdoise(){if(!confirm("Effacer tout l'historique ?"))return;state.ardoise=[];saveState();renderArdoise();toast('🗑️ Effacé');}
-function renderArdoise(){const c=document.getElementById('ardoise-msgs');if(!c)return;const msgs=[...(state.ardoise||[])].reverse();if(!msgs.length){c.innerHTML='<p style="color:var(--muted);font-size:.78rem;text-align:center">Ardoise vide.</p>';return;}const me=state.currentUser?.name;c.innerHTML=msgs.map(m=>`<div class="ardoise-msg ${m.author===me?'mine':'other'}"><div class="ardoise-meta">${m.author} · ${m.date} ${m.time}</div><div>${m.text}</div></div>`).join('');c.scrollTop=0;}
+function renderArdoise(){const c=document.getElementById('ardoise-msgs');if(!c)return;const msgs=[...(state.ardoise||[])].reverse();if(!msgs.length){c.innerHTML='<p style="color:var(--muted);font-size:.78rem;text-align:center">Ardoise vide.</p>';return;}const me=(state&&state.currentUser?state.currentUser.name:"");c.innerHTML=msgs.map(m=>`<div class="ardoise-msg ${m.author===me?'mine':'other'}"><div class="ardoise-meta">${m.author} · ${m.date} ${m.time}</div><div>${m.text}</div></div>`).join('');c.scrollTop=0;}
 function renderReports(){const list=document.getElementById('rep-list');if(!list)return;if(!(state.reports||[]).length){list.innerHTML='<p style="color:var(--muted);font-size:.83rem">Aucun rapport.</p>';return;}list.innerHTML=(state.reports||[]).map((r,i)=>{const md=(r.tasksMatin||[]).filter(t=>t&&t.done).length;const sd=(r.tasksSoir||[]).filter(t=>t&&t.done).length;const tot=(r.tasksMatin||[]).length+(r.tasksSoir||[]).length;const pct=tot?Math.round((md+sd)/tot*100):0;return `<div class="report-list-item" onclick="showRepDetail(${i})"><div><strong>📋 ${r.date}</strong><div style="font-size:.73rem;color:var(--muted)">☀️ ${r.workerMatin||'—'} · 🌙 ${r.workerSoir||'—'}</div><div style="font-size:.73rem;color:var(--muted)">${md+sd}/${tot} · ${pct}%</div></div><span style="font-size:1.1rem;color:var(--muted)">›</span></div>`;}).join('');}
 function showRepDetail(idx){const r=(state.reports||[])[idx];if(!r)return;document.getElementById('rep-list-view').style.display='none';document.getElementById('rep-detail-view').style.display='block';const mr=(r.tasksMatin||[]).map(t=>`<tr><td>${t.num}</td><td>${t.label}</td><td style="color:${t.done?'var(--ok)':'var(--alert)'}">${t.done?'✓':'✗'}</td><td style="font-family:monospace">${t.time}</td></tr>`).join('');const sr=(r.tasksSoir||[]).map(t=>`<tr><td>${t.num}</td><td>${t.label}</td><td style="color:${t.done?'var(--ok)':'var(--alert)'}">${t.done?'✓':'✗'}</td><td style="font-family:monospace">${t.time}</td></tr>`).join('');document.getElementById('rep-detail').innerHTML=`<div class="card"><div style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem;margin-bottom:.7rem;font-size:.8rem"><div style="background:#e8f4fd;border-radius:7px;padding:.5rem"><strong>☀️ Matin</strong><br>${r.workerMatin||'—'}<br>${r.matinStart}→${r.matinEnd}</div><div style="background:#fef9e7;border-radius:7px;padding:.5rem"><strong>🌙 Soir</strong><br>${r.workerSoir||'—'}<br>${r.soirStart}→${r.soirEnd}</div></div><h3 style="margin-bottom:.3rem">Simogramme Matin</h3><div class="simo-wrap"><table class="simo-table"><thead><tr><th>#</th><th>Tâche</th><th>✓</th><th>Heure</th></tr></thead><tbody>${mr}</tbody></table></div><h3 style="margin:.6rem 0 .3rem">Simogramme Soir</h3><div class="simo-wrap"><table class="simo-table"><thead><tr><th>#</th><th>Tâche</th><th>✓</th><th>Heure</th></tr></thead><tbody>${sr}</tbody></table></div></div>`;}
 let curVac='matin';
@@ -1421,20 +1421,20 @@ function autoCreatePedigreeFiche(chiotId, nom, sexe, yeux, portee) {
     notes: '',
     parents: { pere: pere ? pere + " de L'Orée des Moonskys" : '', mere: mere ? mere + " de L'Orée des Moonskys" : '' },
     gp: {
-      gpp: fichePere?.parents?.pere || '',
-      gmp: fichePere?.parents?.mere || '',
-      gpm: ficheMere?.parents?.pere || '',
-      gmm: ficheMere?.parents?.mere || '',
+      gpp: (fichePere&&fichePere.parents?fichePere.parents.pere:"") || '',
+      gmp: (fichePere&&fichePere.parents?fichePere.parents.mere:"") || '',
+      gpm: (ficheMere&&ficheMere.parents?ficheMere.parents.pere:"") || '',
+      gmm: (ficheMere&&ficheMere.parents?ficheMere.parents.mere:"") || '',
     },
     agp: {
-      agpp1: fichePere?.gp?.gpp || '',
-      agpp2: fichePere?.gp?.gmp || '',
-      agpm1: fichePere?.gp?.gpm || '',
-      agpm2: fichePere?.gp?.gmm || '',
-      agpat1: ficheMere?.gp?.gpp || '',
-      agpat2: ficheMere?.gp?.gmp || '',
-      agmat1: ficheMere?.gp?.gpm || '',
-      agmat2: ficheMere?.gp?.gmm || '',
+      agpp1: (fichePere&&fichePere.gp?fichePere.gp.gpp:"") || '',
+      agpp2: (fichePere&&fichePere.gp?fichePere.gp.gmp:"") || '',
+      agpm1: (fichePere&&fichePere.gp?fichePere.gp.gpm:"") || '',
+      agpm2: (fichePere&&fichePere.gp?fichePere.gp.gmm:"") || '',
+      agpat1: (ficheMere&&ficheMere.gp?ficheMere.gp.gpp:"") || '',
+      agpat2: (ficheMere&&ficheMere.gp?ficheMere.gp.gmp:"") || '',
+      agmat1: (ficheMere&&ficheMere.gp?ficheMere.gp.gpm:"") || '',
+      agmat2: (ficheMere&&ficheMere.gp?ficheMere.gp.gmm:"") || '',
     },
     autoCreated: true,
     createdAt: new Date().toISOString(),
@@ -1505,42 +1505,42 @@ function autoFillGP() {
 
   if (fichePere) {
     // GP paternels depuis la fiche du père
-    setSelectOrLibre('pa-gpp', fichePere.parents?.pere || fichePere.gp?.gpp || '');
-    setSelectOrLibre('pa-gmp', fichePere.parents?.mere || fichePere.gp?.gmp || '');
+    setSelectOrLibre('pa-gpp', (fichePere&&fichePere.parents?fichePere.parents.pere:"") || (fichePere&&fichePere.gp?fichePere.gp.gpp:"") || '');
+    setSelectOrLibre('pa-gmp', (fichePere&&fichePere.parents?fichePere.parents.mere:"") || (fichePere&&fichePere.gp?fichePere.gp.gmp:"") || '');
     // AGP depuis les GP du père
-    if (fichePere.parents?.pere) {
+    if ((fichePere&&fichePere.parents?fichePere.parents.pere:"")) {
       const ficheGPP = animals.find(function(a){ return a.nom === fichePere.parents.pere; });
       if (ficheGPP) {
-        setVal('pa-agpp1', ficheGPP.parents?.pere || '');
-        setVal('pa-agpp2', ficheGPP.parents?.mere || '');
+        setVal('pa-agpp1', (ficheGPP&&ficheGPP.parents?ficheGPP.parents.pere:"") || '');
+        setVal('pa-agpp2', (ficheGPP&&ficheGPP.parents?ficheGPP.parents.mere:"") || '');
       }
     }
-    if (fichePere.parents?.mere) {
+    if ((fichePere&&fichePere.parents?fichePere.parents.mere:"")) {
       const ficheGMP = animals.find(function(a){ return a.nom === fichePere.parents.mere; });
       if (ficheGMP) {
-        setVal('pa-agpm1', ficheGMP.parents?.pere || '');
-        setVal('pa-agpm2', ficheGMP.parents?.mere || '');
+        setVal('pa-agpm1', (ficheGMP&&ficheGMP.parents?ficheGMP.parents.pere:"") || '');
+        setVal('pa-agpm2', (ficheGMP&&ficheGMP.parents?ficheGMP.parents.mere:"") || '');
       }
     }
   }
 
   if (ficheMere) {
     // GP maternels depuis la fiche de la mère
-    setSelectOrLibre('pa-gpm', ficheMere.parents?.pere || ficheMere.gp?.gpm || '');
-    setSelectOrLibre('pa-gmm', ficheMere.parents?.mere || ficheMere.gp?.gmm || '');
+    setSelectOrLibre('pa-gpm', (ficheMere&&ficheMere.parents?ficheMere.parents.pere:"") || (ficheMere&&ficheMere.gp?ficheMere.gp.gpm:"") || '');
+    setSelectOrLibre('pa-gmm', (ficheMere&&ficheMere.parents?ficheMere.parents.mere:"") || (ficheMere&&ficheMere.gp?ficheMere.gp.gmm:"") || '');
     // AGP depuis les GP de la mère
-    if (ficheMere.parents?.pere) {
+    if ((ficheMere&&ficheMere.parents?ficheMere.parents.pere:"")) {
       const ficheGPM = animals.find(function(a){ return a.nom === ficheMere.parents.pere; });
       if (ficheGPM) {
-        setVal('pa-agpat1', ficheGPM.parents?.pere || '');
-        setVal('pa-agpat2', ficheGPM.parents?.mere || '');
+        setVal('pa-agpat1', (ficheGPM&&ficheGPM.parents?ficheGPM.parents.pere:"") || '');
+        setVal('pa-agpat2', (ficheGPM&&ficheGPM.parents?ficheGPM.parents.mere:"") || '');
       }
     }
-    if (ficheMere.parents?.mere) {
+    if ((ficheMere&&ficheMere.parents?ficheMere.parents.mere:"")) {
       const ficheGMM = animals.find(function(a){ return a.nom === ficheMere.parents.mere; });
       if (ficheGMM) {
-        setVal('pa-agmat1', ficheGMM.parents?.pere || '');
-        setVal('pa-agmat2', ficheGMM.parents?.mere || '');
+        setVal('pa-agmat1', (ficheGMM&&ficheGMM.parents?ficheGMM.parents.pere:"") || '');
+        setVal('pa-agmat2', (ficheGMM&&ficheGMM.parents?ficheGMM.parents.mere:"") || '');
       }
     }
   }
@@ -1603,8 +1603,8 @@ function saveAnimal(){
     // Mode édition : on remplace la fiche existante
     animal.id          = _editingAnimalId;
     const existing     = (state.animaux||[]).find(x=>x.id===_editingAnimalId);
-    animal.createdAt   = existing?.createdAt || animal.createdAt;
-    animal.chiotId     = existing?.chiotId;
+    animal.createdAt   = (existing&&existing.createdAt) || animal.createdAt;
+    animal.chiotId     = (existing&&existing.chiotId);
     animal.autoCreated = false;
     state.animaux      = (state.animaux||[]).map(function(x){ return x.id===_editingAnimalId ? animal : x; });
     _editingAnimalId   = null;
@@ -1675,24 +1675,24 @@ function openAnimalDetail(id){
   document.getElementById('pa-yeux').value=a.yeux||'';
   document.getElementById('pa-puce').value=a.puce||'';
   document.getElementById('pa-affixe').value=a.affixe||'';
-  setVal('pa-agpp1',a.agp?.agpp1||'');
-  setVal('pa-agpp2',a.agp?.agpp2||'');
-  setVal('pa-agpm1',a.agp?.agpm1||'');
-  setVal('pa-agpm2',a.agp?.agpm2||'');
-  setVal('pa-agpat1',a.agp?.agpat1||'');
-  setVal('pa-agpat2',a.agp?.agpat2||'');
-  setVal('pa-agmat1',a.agp?.agmat1||'');
-  setVal('pa-agmat2',a.agp?.agmat2||'');
+  setVal('pa-agpp1',(a&&a.agp?a.agp.agpp1:"")||'');
+  setVal('pa-agpp2',(a&&a.agp?a.agp.agpp2:"")||'');
+  setVal('pa-agpm1',(a&&a.agp?a.agp.agpm1:"")||'');
+  setVal('pa-agpm2',(a&&a.agp?a.agp.agpm2:"")||'');
+  setVal('pa-agpat1',(a&&a.agp?a.agp.agpat1:"")||'');
+  setVal('pa-agpat2',(a&&a.agp?a.agp.agpat2:"")||'');
+  setVal('pa-agmat1',(a&&a.agp?a.agp.agmat1:"")||'');
+  setVal('pa-agmat2',(a&&a.agp?a.agp.agmat2:"")||'');
   setVal('pa-notes',a.notes||'');
   switchSub('ped-new');
   setTimeout(function(){
     populatePedigreeSelects();
-    setSelectOrLibre('pa-pere',a.parents?.pere||'');
-    setSelectOrLibre('pa-mere',a.parents?.mere||'');
-    setSelectOrLibre('pa-gpp', a.gp?.gpp||'');
-    setSelectOrLibre('pa-gmp', a.gp?.gmp||'');
-    setSelectOrLibre('pa-gpm', a.gp?.gpm||'');
-    setSelectOrLibre('pa-gmm', a.gp?.gmm||'');
+    setSelectOrLibre('pa-pere',(a&&a.parents?a.parents.pere:"")||'');
+    setSelectOrLibre('pa-mere',(a&&a.parents?a.parents.mere:"")||'');
+    setSelectOrLibre('pa-gpp', (a&&a.gp?a.gp.gpp:"")||'');
+    setSelectOrLibre('pa-gmp', (a&&a.gp?a.gp.gmp:"")||'');
+    setSelectOrLibre('pa-gpm', (a&&a.gp?a.gp.gpm:"")||'');
+    setSelectOrLibre('pa-gmm', (a&&a.gp?a.gp.gmm:"")||'');
   },120);
   const btn=document.getElementById('btn-save-animal');
   if(btn) btn.textContent='💾 Mettre à jour la fiche';
@@ -1759,31 +1759,31 @@ function genCertificat(){
       <!-- Col 2: Parents -->
       <div style="display:flex;flex-direction:column;justify-content:space-around;min-width:130px;max-width:160px">
         <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:3px">Parents</div>
-        <div class="ped-box male"><div class="ped-name">${a.parents?.pere||'—'}</div><div class="ped-meta">Père</div></div>
-        <div class="ped-box female"><div class="ped-name">${a.parents?.mere||'—'}</div><div class="ped-meta">Mère</div></div>
+        <div class="ped-box male"><div class="ped-name">${(a&&a.parents?a.parents.pere:"")||'—'}</div><div class="ped-meta">Père</div></div>
+        <div class="ped-box female"><div class="ped-name">${(a&&a.parents?a.parents.mere:"")||'—'}</div><div class="ped-meta">Mère</div></div>
       </div>
 
       <!-- Col 3: Grands-parents -->
       <div style="display:flex;flex-direction:column;justify-content:space-around;min-width:140px;max-width:170px">
         <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:3px">Grands-Parents</div>
-        <div class="ped-box male"><div class="ped-name">${a.gp?.gpp||'—'}</div><div class="ped-meta">GP Pat.</div></div>
-        <div class="ped-box female"><div class="ped-name">${a.gp?.gmp||'—'}</div><div class="ped-meta">GM Pat.</div></div>
-        <div class="ped-box male"><div class="ped-name">${a.gp?.gpm||'—'}</div><div class="ped-meta">GP Mat.</div></div>
-        <div class="ped-box female"><div class="ped-name">${a.gp?.gmm||'—'}</div><div class="ped-meta">GM Mat.</div></div>
+        <div class="ped-box male"><div class="ped-name">${(a&&a.gp?a.gp.gpp:"")||'—'}</div><div class="ped-meta">GP Pat.</div></div>
+        <div class="ped-box female"><div class="ped-name">${(a&&a.gp?a.gp.gmp:"")||'—'}</div><div class="ped-meta">GM Pat.</div></div>
+        <div class="ped-box male"><div class="ped-name">${(a&&a.gp?a.gp.gpm:"")||'—'}</div><div class="ped-meta">GP Mat.</div></div>
+        <div class="ped-box female"><div class="ped-name">${(a&&a.gp?a.gp.gmm:"")||'—'}</div><div class="ped-meta">GM Mat.</div></div>
       </div>
 
       <!-- Col 4: Arrière-grands-parents -->
       <div style="display:flex;flex-direction:column;justify-content:space-around;min-width:150px;max-width:180px">
         <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:3px">Arrière-Grands-Parents</div>
         ${[
-          {name:a.agp?.agpp1,label:'AGP PP',sex:'M'},
-          {name:a.agp?.agpp2,label:'AGM PP',sex:'F'},
-          {name:a.agp?.agpm1,label:'AGP MP',sex:'M'},
-          {name:a.agp?.agpm2,label:'AGM MP',sex:'F'},
-          {name:a.agp?.agpat1,label:'AGP PM',sex:'M'},
-          {name:a.agp?.agpat2,label:'AGM PM',sex:'F'},
-          {name:a.agp?.agmat1,label:'AGP MM',sex:'M'},
-          {name:a.agp?.agmat2,label:'AGM MM',sex:'F'},
+          {name:(a&&a.agp?a.agp.agpp1:""),label:'AGP PP',sex:'M'},
+          {name:(a&&a.agp?a.agp.agpp2:""),label:'AGM PP',sex:'F'},
+          {name:(a&&a.agp?a.agp.agpm1:""),label:'AGP MP',sex:'M'},
+          {name:(a&&a.agp?a.agp.agpm2:""),label:'AGM MP',sex:'F'},
+          {name:(a&&a.agp?a.agp.agpat1:""),label:'AGP PM',sex:'M'},
+          {name:(a&&a.agp?a.agp.agpat2:""),label:'AGM PM',sex:'F'},
+          {name:(a&&a.agp?a.agp.agmat1:""),label:'AGP MM',sex:'M'},
+          {name:(a&&a.agp?a.agp.agmat2:""),label:'AGM MM',sex:'F'},
         ].map(x=>`<div class="ped-box ${x.sex==='M'?'male':'female'}"><div class="ped-name">${x.name||'—'}</div><div class="ped-meta">${x.label}</div></div>`).join('')}
       </div>
     </div>
