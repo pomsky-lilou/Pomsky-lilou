@@ -218,7 +218,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.7a.31 — 27 août 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a.32 — 27 août 2026</p>
     </div>
   </div>
 </div>
@@ -227,7 +227,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
 <div id="screen-admin" class="screen">
   <div class="topbar">
     <div class="topbar-brand"><span style="font-size:1.2rem">🌸</span><h2>Pomsky de Lilou</h2></div>
-    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.31</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
+    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.32</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
   </div>
   <nav class="bottom-nav">
     <button class="active" data-panel="tableau"><span class="ni">📊</span>Tableau</button>
@@ -1054,8 +1054,9 @@ function renderChiotsForm(pid){
       av.className='chiot-av '+(c.sexe==='M'?'male':'female');
       av.textContent=c.sexe==='M'?'♂':'♀';
       var info=document.createElement('div');info.style.flex='1';
-      info.innerHTML='<div style="font-size:.82rem;font-weight:600">'+(c.codeProvisoire||c.nom||'#'+(i+1))+'</div>'
-        +(c.nomClient?'<div style="font-size:.75rem;color:var(--moss);font-weight:600">✨ '+c.nomClient+'</div>':'')
+      info.innerHTML=''
+        +(c.nomClient?'<div style="font-weight:700;font-size:.86rem;color:var(--forest)">✨ '+c.nomClient+'</div>':'')
+        +'<div style="font-size:.78rem;color:var(--muted);font-family:DM Mono,monospace">'+(c.codeProvisoire||c.nom||'#'+(i+1))+'</div>'
         +'<div style="font-size:.7rem;color:var(--muted)">'+(c.robe||'')+(c.yeux?' · '+c.yeux:'')+(c.poids?' · '+c.poids+'g':'')+'</div>';
       var del=document.createElement('button');
       del.className='btn btn-danger btn-sm';del.textContent='✕';
