@@ -218,7 +218,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.7a.26 — 27 août 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a.28 — 27 août 2026</p>
     </div>
   </div>
 </div>
@@ -227,7 +227,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
 <div id="screen-admin" class="screen">
   <div class="topbar">
     <div class="topbar-brand"><span style="font-size:1.2rem">🌸</span><h2>Pomsky de Lilou</h2></div>
-    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.26</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
+    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.28</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
   </div>
   <nav class="bottom-nav">
     <button class="active" data-panel="tableau"><span class="ni">📊</span>Tableau</button>
@@ -2171,77 +2171,167 @@ function generateContrat(clientId){
   if(!c){toast('Client introuvable');return;}
   var chiot=null;var portee=null;
   (state.portees||[]).forEach(function(p){(p.chiots||[]).forEach(function(ch){if(ch.id===c.chiot){chiot=ch;portee=p;}});});
-  var nomChiot=chiot?(chiot.nomClient||chiot.codeProvisoire):'Non affecte';
-  var nomDef=nomChiot+" de L'Orée des Moonskys";
-  var dateAuj=new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'});
-  var sexeTxt=chiot?(chiot.sexe==='M'?'mâle':'femelle'):'non précisé';
-  var robe=chiot?(chiot.robe||'non précisé'):'non précisé';
-  var mere=portee?portee.femelle:'non précisé';
-  var pere=portee?portee.male:'non précisé';
-  var naiss=portee?fmtShort(portee.naissance):'non précisé';
+  var nomChiot=chiot?(chiot.nomClient||chiot.codeProvisoire):'...';
+  var nomDef=nomChiot+" de L'Or\u00e9e des Moonskys";
+  var dateAuj=new Date().toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
+  var sexeTxt=chiot?(chiot.sexe==='M'?'m\u00e2le':'femelle'):'non pr\u00e9cis\u00e9';
+  var robe=chiot?(chiot.robe||'non pr\u00e9cis\u00e9'):'non pr\u00e9cis\u00e9';
+  var mere=portee?(portee.femelle+' de L\'Or\u00e9e des Moonskys'):'non pr\u00e9cis\u00e9';
+  var pere=portee?portee.male:'non pr\u00e9cis\u00e9';
+  var naiss=portee?fmtShort(portee.naissance):'non pr\u00e9cis\u00e9';
   var puce=chiot?(chiot.puce||'en attente'):'en attente';
   var prix=c.prix||0;
-  var paiements=(c.paiements||[]).map(function(p){return '<tr><td>'+p.label+'</td><td>'+p.montant+'€</td><td>'+(p.recu?'✓ Reçu':'En attente')+'</td></tr>';}).join('');
 
-  var html='<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Contrat de vente '+nomDef+'</title>'+
-    '<style>body{font-family:Georgia,serif;max-width:800px;margin:2rem auto;padding:2rem;font-size:13px;line-height:1.6;color:#1a1a1a}'+
-    'h1{font-size:1.1rem;text-align:center;text-transform:uppercase;border-bottom:2px solid #1a3a2a;padding-bottom:.5rem;margin-bottom:1.5rem}'+
-    'h2{font-size:.95rem;text-transform:uppercase;color:#1a3a2a;margin-top:1.5rem;border-bottom:1px solid #ccc;padding-bottom:.2rem}'+
-    'table{width:100%;border-collapse:collapse;margin:.5rem 0}'+
-    'td{padding:.3rem .5rem;border:1px solid #ccc}'+
-    'td:first-child{font-weight:bold;width:40%;background:#f5f0e8}'+
-    '.parties{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1rem 0}'+
-    '.partie{border:1px solid #ccc;padding:.7rem;border-radius:4px}'+
-    '.partie h3{font-size:.85rem;color:#1a3a2a;margin-bottom:.4rem;text-transform:uppercase}'+
-    '.sign{display:grid;grid-template-columns:1fr 1fr;gap:2rem;margin-top:2rem}'+
-    '.sign-box{border-top:1px solid #333;padding-top:.5rem;text-align:center;font-size:.85rem}'+
-    '.footer{text-align:center;font-size:.75rem;color:#666;margin-top:1.5rem;border-top:1px solid #ccc;padding-top:.5rem}'+
-    '@media print{button{display:none}body{margin:.5rem;padding:.5rem}}'+
-    '</style></head><body>'+
-    '<div style="text-align:center;margin-bottom:1rem"><span style="font-size:2rem">🐾</span><br>'+
-    '<strong>L\'Orée des Moonskys</strong><br>'+
-    '<small>46 chemin du Ribarot, 31700 Daux — Élevage de Pomsky œuvrant à la reconnaissance de cette nouvelle race</small></div>'+
-    '<h1>Contrat de vente d\'un chiot de type Pomsky<br><small>valant Attestation de Cession</small></h1>'+
-    '<div class="parties">'+
-    '<div class="partie"><h3>Le Vendeur</h3>'+
-    'Madame DELBOUIS Laurence<br>46 chemin du Ribarot<br>31700 DAUX<br>Tél : 06-08-84-75-89<br>laurencebabb@gmail.com<br>SIRET : 82194514400011</div>'+
-    '<div class="partie"><h3>L\'Acquéreur</h3>'+
-    (c.prenom||'')+' '+(c.nom||'')+'<br>'+(c.adresse||'—')+'<br>Tél : '+(c.tel||'—')+'<br>'+(c.email||'—')+'</div></div>'+
-    '<h2>Art. 1 — Cession & Livraison</h2>'+
-    '<table><tr><td>Date de cession</td><td>'+dateAuj+' à Daux (31)</td></tr>'+
-    '<tr><td>Race</td><td>Pomsky</td></tr>'+
-    '<tr><td>Date de naissance</td><td>'+naiss+'</td></tr>'+
-    '<tr><td>Sexe</td><td>'+sexeTxt+'</td></tr>'+
-    '<tr><td>Robe</td><td>'+robe+'</td></tr>'+
-    '<tr><td>Nom</td><td><strong>'+nomDef+'</strong></td></tr>'+
-    '<tr><td>Puce électronique</td><td>'+puce+'</td></tr>'+
-    '<tr><td>Mère</td><td>'+mere+' de L\'Orée des Moonskys</td></tr>'+
-    '<tr><td>Père</td><td>'+pere+' de L\'Orée des Moonskys</td></tr></table>'+
-    '<h2>Art. 2 — Destination</h2>'+
-    '<p>Le chiot est cédé à titre d\'animal de compagnie exclusivement.<br>'+
-    '<strong>Option obligation de stérilisation</strong> : l\'acheteur devra faire stériliser le chiot entre 6 et 12 mois et en justifier par certificat vétérinaire.</p>'+
-    '<h2>Art. 3 — Garantie</h2>'+
-    '<p>La présente vente est soumise à la garantie des vices rédhibitoires prévue aux articles L.213-1 et suivants du Code Rural.</p>'+
-    '<h2>Art. 4 — Prix</h2>'+
-    '<table><tr><td>Prix de vente</td><td><strong>'+prix+'€</strong></td></tr>'+
-    '<tr><td>Ristourne stérilisation</td><td>2 000€ (chèque non encaissé, rendu sur certificat)</td></tr></table>'+
-    '<h2>Art. 5 — Paiement</h2>'+
-    '<table><tr><th>Versement</th><th>Montant</th><th>Statut</th></tr>'+paiements+'</table>'+
-    '<p>Clause de réserve de propriété : le chien reste propriété du vendeur jusqu\'au paiement intégral.</p>'+
-    '<h2>Art. 6 — Documents remis</h2>'+
-    '<p>Attestation de cession • Document information • Certificat I-CAD • Carnet de vaccination • Certificat vétérinaire avant cession</p>'+
-    '<h2>Art. 7 — Médiation</h2>'+
-    '<p>Monsieur Yves LEGEAY, 22 Boulevard A. Millerand, 44000 Nantes.</p>'+
-    '<div style="margin-top:1.5rem;text-align:center;font-style:italic">Fait à DAUX, le '+dateAuj+', en deux exemplaires.</div>'+
-    '<div class="sign"><div class="sign-box">Le vendeur<br><br>Laurence DELBOUIS<br><br><br></div>'+
-    '<div class="sign-box">L\'acquéreur<br><br>'+(c.prenom||'')+' '+(c.nom||'')+'<br><br><br></div></div>'+
-    '<div class="footer">Élevage de Pomsky œuvrant à la reconnaissance de cette nouvelle race — L\'Orée des Moonskys — 46 chemin du Ribarot 31700 Daux</div>'+
-    '<div style="text-align:center;margin-top:1rem"><button onclick="window.print()" style="background:#1a3a2a;color:white;border:none;padding:.6rem 1.5rem;border-radius:8px;cursor:pointer;font-size:1rem">🖨️ Imprimer / Enregistrer en PDF</button></div>'+
-    '</body></html>';
+  var paiementsRows=(c.paiements||[]).map(function(p){
+    return '<tr>'
+      +'<td>'+p.label+'</td>'
+      +'<td>'+p.montant+'\u20ac</td>'
+      +'<td>'+(p.recu?'\u2713 Re\u00e7u le '+p.date:'En attente')+'</td>'
+      +'</tr>';
+  }).join('');
+
+  var html='<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">'
+    +'<title>Contrat de vente '+nomDef+'</title>'
+    +'<style>'
+    +'*{box-sizing:border-box;margin:0;padding:0}'
+    +'body{font-family:Georgia,serif;max-width:860px;margin:0 auto;padding:2rem 3rem;font-size:12px;color:#111;line-height:1.6}'
+    +'.header{text-align:center;margin-bottom:1.5rem}'
+    +'.header .paw{font-size:1.8rem;filter:sepia(60%)}'
+    +'.header .name{font-weight:bold;font-size:1rem;margin:.3rem 0}'
+    +'.header .sub{font-size:.75rem;color:#555}'
+    +'.title-block{text-align:center;margin:1.2rem 0;border-top:2px solid #1a3a2a;border-bottom:2px solid #1a3a2a;padding:.7rem 0}'
+    +'.title-block h1{font-size:1rem;font-weight:bold;text-transform:uppercase;letter-spacing:.05em}'
+    +'.title-block h2{font-size:.85rem;font-weight:normal;text-transform:uppercase;margin-top:.2rem}'
+    +'.parties{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1.2rem 0}'
+    +'.partie{border:1px solid #ccc;border-radius:4px;padding:.8rem 1rem}'
+    +'.partie h3{font-size:.75rem;font-weight:bold;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.5rem;color:#1a3a2a}'
+    +'.partie p{font-size:.82rem;margin:.15rem 0}'
+    +'h4{font-size:.82rem;font-weight:bold;text-transform:uppercase;letter-spacing:.06em;color:#1a3a2a;margin:1.2rem 0 .3rem;border-bottom:1px solid #ccc;padding-bottom:.2rem}'
+    +'p{font-size:.82rem;margin:.4rem 0}'
+    +'table{width:100%;border-collapse:collapse;margin:.5rem 0;font-size:.82rem}'
+    +'table th{background:#f5f0e8;padding:.35rem .6rem;border:1px solid #ccc;font-weight:bold;text-align:left}'
+    +'table td{padding:.35rem .6rem;border:1px solid #ccc}'
+    +'table td:first-child{font-weight:bold;background:#f9f6f0;width:42%}'
+    +'ul{margin:.3rem 0 .4rem 1.3rem;font-size:.82rem}'
+    +'ul li{margin:.2rem 0}'
+    +'.sign{display:grid;grid-template-columns:1fr 1fr;gap:3rem;margin-top:2rem}'
+    +'.sign-line{border-top:1px solid #333;padding-top:.4rem;text-align:center;font-size:.8rem}'
+    +'.footer{text-align:center;font-size:.72rem;color:#777;margin-top:1.5rem;padding-top:.8rem;border-top:1px solid #ccc}'
+    +'strong{font-weight:bold}'
+    +'@media print{button{display:none!important}body{padding:1rem 2rem}}'
+    +'</style></head><body>'
+
+    // EN-TÊTE
+    +'<div class="header">'
+    +'<div class="paw">🐾</div>'
+    +'<div class="name">L\'Or\u00e9e des Moonskys</div>'
+    +'<div class="sub">46 chemin du Ribarot, 31700 Daux \u2014 \u00c9levage de Pomsky \u0153uvrant \u00e0 la reconnaissance de cette nouvelle race</div>'
+    +'</div>'
+
+    // TITRE
+    +'<div class="title-block">'
+    +'<h1>Contrat de vente d\'un chiot/chien de type Pomsky</h1>'
+    +'<h2>valant attestation de cession (chien destin\u00e9 \u00e0 la compagnie)</h2>'
+    +'</div>'
+
+    // PARTIES
+    +'<div class="parties">'
+    +'<div class="partie"><h3>Le Vendeur</h3>'
+    +'<p>Madame DELBOUIS Laurence</p>'
+    +'<p>46 chemin du Ribarot</p>'
+    +'<p>31700 DAUX</p>'
+    +'<p>T\u00e9l : 06-08-84-75-89</p>'
+    +'<p>laurencebabb@gmail.com</p>'
+    +'<p>SIRET : 82194514400011</p>'
+    +'</div>'
+    +'<div class="partie"><h3>L\'Acqu\u00e9reur</h3>'
+    +'<p><strong>'+(c.prenom||'')+' '+(c.nom||'')+'</strong></p>'
+    +'<p>'+(c.adresse||'\u2014')+'</p>'
+    +'<p>T\u00e9l : '+(c.tel||'\u2014')+'</p>'
+    +'<p>'+(c.email||'\u2014')+'</p>'
+    +'<p style="margin-top:.5rem;font-size:.75rem;color:#555">ci-apr\u00e8s d\u00e9nomm\u00e9 \u00ab l\'acqu\u00e9reur \u00bb, qui se d\u00e9clare en qualit\u00e9 de consommateur ou non-professionnel.</p>'
+    +'</div></div>'
+
+    // ART 1
+    +'<h4>Art. 1 \u2014 Cession &amp; Livraison</h4>'
+    +'<p>Par les pr\u00e9sentes, le vendeur c\u00e8de et livre ce jour le '+dateAuj+' \u00e0 Daux (31) :</p>'
+    +'<table>'
+    +'<tr><td>Date de cession</td><td>'+dateAuj+' \u00e0 Daux (31)</td></tr>'
+    +'<tr><td>Race</td><td>Pomsky</td></tr>'
+    +'<tr><td>Date de naissance</td><td>'+naiss+'</td></tr>'
+    +'<tr><td>Sexe</td><td>'+sexeTxt+'</td></tr>'
+    +'<tr><td>Robe</td><td>'+robe+'</td></tr>'
+    +'<tr><td>Nom</td><td><strong>'+nomDef+'</strong></td></tr>'
+    +'<tr><td>Puce \u00e9lectronique</td><td>'+puce+'</td></tr>'
+    +'<tr><td>M\u00e8re</td><td>'+mere+'</td></tr>'
+    +'<tr><td>P\u00e8re</td><td>'+pere+'</td></tr>'
+    +'</table>'
+    +'<p>L\'Acqu\u00e9reur s\'engage \u00e0 d\u00e9tenir l\'animal dans des conditions compatibles avec ses besoins biologiques et comportementaux et \u00e0 lui donner des soins attentifs conform\u00e9ment aux articles L.214-1 \u00e0 L.214-3 du Code rural et de la p\u00eache maritime.</p>'
+
+    // ART 2
+    +'<h4>Art. 2 \u2014 Destination du chiot</h4>'
+    +'<p>Le chiot est c\u00e9d\u00e9 \u00e0 titre d\'animal de compagnie et est, de convention expresse entre les parties, destin\u00e9 exclusivement \u00e0 cet usage. Il s\'agit d\'une condition d\u00e9terminante du consentement du vendeur, sans laquelle il n\'aurait pas contract\u00e9.</p>'
+    +'<p>\u00a8 <em>Option cession \u00e0 l\'\u00e9tat st\u00e9rilis\u00e9 : le chien c\u00e9d\u00e9 est d\u00e9j\u00e0 st\u00e9rilis\u00e9.</em></p>'
+    +'<p><strong>X Option obligation de st\u00e9rilisation</strong> : L\'acheteur devra faire st\u00e9riliser le chiot \u00e0 partir de l\'\u00e2ge de 6 mois et avant celui de 12 mois et en justifier au vendeur par un certificat v\u00e9t\u00e9rinaire, sous peine de perdre la ristourne pr\u00e9vue \u00e0 l\'article 4. Sous la m\u00eame peine, il ne pourra c\u00e9der \u00e0 un tiers l\'animal avant qu\'il ne soit st\u00e9rilis\u00e9.</p>'
+
+    // ART 3
+    +'<h4>Art. 3 \u2014 Garantie</h4>'
+    +'<p>La pr\u00e9sente vente est soumise uniquement \u00e0 la garantie des vices r\u00e9dhibitoires pr\u00e9vue aux articles L. 213-1 et suivants du Code Rural et de la P\u00eache Maritime, \u00e0 l\'exclusion de la garantie des vices cach\u00e9s de droit commun \u00e9dict\u00e9e \u00e0 l\'article 1641 du code civil.</p>'
+    +'<p>Il appartient \u00e0 l\'acheteur de prendre certaines pr\u00e9cautions au cours de la croissance du chiot jusqu\'\u00e0 12 mois :</p>'
+    +'<ul>'
+    +'<li>Pas de longues promenades (sorties de 10 \u00e0 15 minutes jusqu\'\u00e0 6 mois, une heure par semaine entre 6 et 12 mois)</li>'
+    +'<li>\u00c9viter de faire galoper le chiot (le trot est plus conseill\u00e9)</li>'
+    +'<li>Pas de saut, \u00e9viter les mont\u00e9es ou descentes d\'escaliers</li>'
+    +'<li>\u00c9viter le surpoids \u2014 nourrir exclusivement avec des aliments PREMIUM (PRO PLAN PUPPY ou ROYAL CANIN MEDIUM PUPPY)</li>'
+    +'<li>Pas de grignotage ou de nourriture \u00e0 volont\u00e9</li>'
+    +'</ul>'
+    +(chiot&&chiot.sexe==='M'?'<p>S\'il acqu\u00e9rit un chiot m\u00e2le, l\'acheteur reconna\u00eet avoir \u00e9t\u00e9 inform\u00e9 qu\'en d\u00e9pit d\'une descente normale dans le scrotum aux alentours de 6 semaines, les testicules peuvent remonter jusqu\'\u00e0 l\'\u00e2ge de six mois. L\'acqu\u00e9reur d\u00e9clare renoncer \u00e0 toute r\u00e9clamation, recours ou action, en cas d\'ectopie testiculaire.</p>':'')
+
+    // ART 4
+    +'<h4>Art. 4 \u2014 Prix</h4>'
+    +'<p>Le chiot c\u00e9d\u00e9 par les pr\u00e9sentes est exclusivement destin\u00e9 \u00e0 la compagnie, m\u00eame si l\'option st\u00e9rilisation n\'a pas \u00e9t\u00e9 coch\u00e9e, ce \u00e0 quoi s\'oblige l\'acqu\u00e9reur, en contrepartie d\'une ristourne de deux mille euros (2 000\u20ac, ch\u00e8que de ristourne en attente et non encaiss\u00e9), sur le prix de vente fix\u00e9 \u00e0 '+prix+'\u20ac.</p>'
+    +'<table>'
+    +'<tr><td>Prix de vente</td><td>'+prix+'\u20ac</td></tr>'
+    +'<tr><td>Ristourne st\u00e9rilisation</td><td>2 000\u20ac (ch\u00e8que non encaiss\u00e9, rendu sur certificat)</td></tr>'
+    +'</table>'
+    +'<p>Sur pr\u00e9sentation du certificat de st\u00e9rilisation r\u00e9alis\u00e9e dans le d\u00e9lai imparti \u00e0 l\'article 2, le vendeur renverra \u00e0 l\'acheteur la ristourne.</p>'
+
+    // ART 5
+    +'<h4>Art. 5 \u2014 Paiement &amp; R\u00e9serve de propri\u00e9t\u00e9</h4>'
+    +'<p>Le prix convenu, apr\u00e8s \u00e9ventuelle r\u00e9duction, a \u00e9t\u00e9 pay\u00e9 par '+(c.paiements||[]).length+' virement(s) :</p>'
+    +'<table><tr><th>Versement</th><th>Montant</th><th>Statut</th></tr>'+paiementsRows+'</table>'
+    +'<p>La pr\u00e9sente vente est soumise \u00e0 une clause de r\u00e9serve de propri\u00e9t\u00e9. Le chien reste la propri\u00e9t\u00e9 du vendeur jusqu\'\u00e0 paiement int\u00e9gral et effectif du prix convenu. Chaque jour de retard g\u00e9n\u00e8re un int\u00e9r\u00eat journalier de dix euros (10\u20ac).</p>'
+
+    // ART 6
+    +'<h4>Art. 6 \u2014 Documents remis</h4>'
+    +'<p>L\'acqu\u00e9reur soussign\u00e9 reconna\u00eet avoir re\u00e7u ce jour :</p>'
+    +'<p>Attestation de cession \u2022 Document d\'information sur les caract\u00e9ristiques de l\'animal \u2022 Certificat I-CAD \u2022 Carnet ou passeport EU de vaccination \u2022 Certificat v\u00e9t\u00e9rinaire avant cession</p>'
+
+    // ART 7
+    +'<h4>Art. 7 \u2014 M\u00e9diation</h4>'
+    +'<p>Le vendeur rel\u00e8ve du m\u00e9diateur de la consommation, Monsieur Yves LEGEAY, demeurant 22 Boulevard A. Millerand, 44000 Nantes.</p>'
+
+    // ART 8
+    +'<h4>Art. 8 \u2014 Nationalit\u00e9 du contrat</h4>'
+    +'<p>Le pr\u00e9sent contrat est de droit fran\u00e7ais exclusivement et rel\u00e8vera des juridictions fran\u00e7aises uniquement.</p>'
+
+    // SIGNATURE
+    +'<p style="text-align:center;font-style:italic;margin:1.5rem 0">Fait \u00e0 DAUX, le '+dateAuj+', en deux exemplaires.</p>'
+    +'<div class="sign">'
+    +'<div><div class="sign-line">Le vendeur</div><br><p style="text-align:center;font-size:.82rem">Laurence DELBOUIS</p></div>'
+    +'<div><div class="sign-line">L\'acqu\u00e9reur</div><br><p style="text-align:center;font-size:.82rem">'+(c.prenom||'')+' '+(c.nom||'')+'</p></div>'
+    +'</div>'
+
+    // FOOTER
+    +'<div class="footer">\u00c9levage de Pomsky \u0153uvrant \u00e0 la reconnaissance de cette nouvelle race \u2014 L\'Or\u00e9e des Moonskys \u2014 46 chemin du Ribarot 31700 Daux</div>'
+    +'<div style="text-align:center;margin-top:1.2rem">'
+    +'<button onclick="window.print()" style="background:#1a3a2a;color:white;border:none;padding:.6rem 1.8rem;border-radius:8px;cursor:pointer;font-size:.9rem">\uD83D\uDDB8\uFE0F Imprimer / Enregistrer en PDF</button>'
+    +'</div>'
+    +'</body></html>';
 
   var w=window.open('','_blank');
-  w.document.write(html);
-  w.document.close();
+  if(w){w.document.write(html);w.document.close();}
+  else toast('Autorisez les popups pour ce site');
 }
 
 function generateCertifFromFamille(clientId){
