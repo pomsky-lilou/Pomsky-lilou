@@ -218,7 +218,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.7a.32 — 27 août 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a.34 — 27 août 2026</p>
     </div>
   </div>
 </div>
@@ -227,7 +227,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
 <div id="screen-admin" class="screen">
   <div class="topbar">
     <div class="topbar-brand"><span style="font-size:1.2rem">🌸</span><h2>Pomsky de Lilou</h2></div>
-    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.32</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
+    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.34</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
   </div>
   <nav class="bottom-nav">
     <button class="active" data-panel="tableau"><span class="ni">📊</span>Tableau</button>
@@ -1054,9 +1054,10 @@ function renderChiotsForm(pid){
       av.className='chiot-av '+(c.sexe==='M'?'male':'female');
       av.textContent=c.sexe==='M'?'♂':'♀';
       var info=document.createElement('div');info.style.flex='1';
+      var affNom2=c.nomClient||(c.nom&&c.nom!==c.codeProvisoire?c.nom:'');
       info.innerHTML=''
-        +(c.nomClient?'<div style="font-weight:700;font-size:.86rem;color:var(--forest)">✨ '+c.nomClient+'</div>':'')
-        +'<div style="font-size:.78rem;color:var(--muted);font-family:DM Mono,monospace">'+(c.codeProvisoire||c.nom||'#'+(i+1))+'</div>'
+        +(affNom2?'<div style="font-weight:700;font-size:.86rem;color:var(--forest)">✨ '+affNom2+'</div>':'')
+        +'<div style="font-size:.72rem;color:var(--muted);font-family:monospace">'+(c.codeProvisoire||c.nom||'#'+(i+1))+'</div>'
         +'<div style="font-size:.7rem;color:var(--muted)">'+(c.robe||'')+(c.yeux?' · '+c.yeux:'')+(c.poids?' · '+c.poids+'g':'')+'</div>';
       var del=document.createElement('button');
       del.className='btn btn-danger btn-sm';del.textContent='✕';
@@ -1258,7 +1259,12 @@ function openPorteeDetail(pid){
       return '<div class="chiot-full">'
         +"<div class=\"chiot-full-header\" data-cid=\""+c.id+"\" onclick=\"toggleChiotDtl(this.dataset.cid)\">"
         +'<div class="chiot-av '+(c.sexe==='M'?'male':'female')+'">'+(c.sexe==='M'?'♂':'♀')+'</div>'
-        +'<div style="flex:1"><div style="font-weight:600;font-size:.86rem">'+c.codeProvisoire+'</div>'
+        +'<div style="flex:1">'
+          +(function(){
+            var affNom=c.nomClient||(c.nom&&c.nom!==c.codeProvisoire?c.nom:'');
+            return affNom?'<div style="font-weight:700;font-size:.88rem;color:var(--forest)">✨ '+affNom+'</div>':'';
+          })()
+          +'<div style="font-size:.72rem;color:var(--muted);font-family:monospace">'+c.codeProvisoire+'</div>'
         +'<div style="font-size:.7rem;color:var(--muted)">'+(c.robe||'')+' · '+(c.yeux||'')+'</div></div>'
         +'<span class="badge '+badgeCls+'">'+(notif.level==='vert'?'✓':notif.level==='rouge'?'🔴':notif.level==='orange'?'🟠':'🔵')+'</span>'
         +(famille?'<span class="badge badge-ok" style="margin-left:.3rem">👨‍👩‍👧 '+famille.prenom+'</span>':
@@ -1450,24 +1456,25 @@ function archiverPortee(pid){
 }
 
 function populateChiotSel(){
-  // Reload from localStorage to get latest data
   try{var r=localStorage.getItem('pomsky_v2');if(r)mergeState(JSON.parse(r));}catch(e){}
   var sel=document.getElementById('c-chiot');if(!sel)return;
+  var currentVal=sel.value;
   sel.innerHTML='<option value="">— Choisir —</option>';
-  // Include active AND archived portees to show all chiots available
+  // Show all chiots not yet sold/assigned to a family
   (state.portees||[]).forEach(function(p){
-    (p.chiots||[]).filter(function(c){return !c.vendu&&c.affectation!=='famille';}).forEach(function(c){
+    (p.chiots||[]).forEach(function(c){
+      // Only exclude if already assigned to a client (vendu=true AND a client exists)
+      var hasClient=(state.clients||[]).some(function(cl){return cl.chiot===c.id;});
+      if(hasClient) return; // skip - already has a family
       var o=document.createElement('option');
       o.value=c.id;
-      o.textContent=(c.nomClient||c.codeProvisoire||c.nom)+' ('+p.femelle+' × '+p.male+')';
+      var nom=c.nomClient?('✨ '+c.nomClient+' ('+c.codeProvisoire+')'):(c.codeProvisoire||c.nom);
+      o.textContent=nom+' — '+p.femelle+' × '+p.male;
       sel.appendChild(o);
     });
   });
-  // Also add option for future litter
-  var opt=document.createElement('option');
-  opt.value='future';
-  opt.textContent='Sur future portée';
-  sel.appendChild(opt);
+  // Restore previous value if still available
+  if(currentVal) sel.value=currentVal;
 }
 
 // ══════ CRM ══════
