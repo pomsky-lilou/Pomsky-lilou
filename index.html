@@ -218,7 +218,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.7a.28 — 27 août 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a.31 — 27 août 2026</p>
     </div>
   </div>
 </div>
@@ -227,7 +227,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
 <div id="screen-admin" class="screen">
   <div class="topbar">
     <div class="topbar-brand"><span style="font-size:1.2rem">🌸</span><h2>Pomsky de Lilou</h2></div>
-    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.28</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
+    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.31</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
   </div>
   <nav class="bottom-nav">
     <button class="active" data-panel="tableau"><span class="ni">📊</span>Tableau</button>
@@ -790,6 +790,9 @@ function switchSub(id){
   const el=document.getElementById(id);if(el){el.style.display='block';el.classList.add('active');}
   const tab=par.querySelector('.mod-tab[data-sub="'+id+'"]');if(tab)tab.classList.add('active');
   // Populate pedigree selects when opening the form
+  if (id==='crm-new') {
+    setTimeout(populateChiotSel, 50);
+  }
   if (id==='ped-new') {
     // Only reset if NOT called from openAnimalDetail (editing mode)
     if (!_editingAnimalId) {
@@ -1052,7 +1055,7 @@ function renderChiotsForm(pid){
       av.textContent=c.sexe==='M'?'♂':'♀';
       var info=document.createElement('div');info.style.flex='1';
       info.innerHTML='<div style="font-size:.82rem;font-weight:600">'+(c.codeProvisoire||c.nom||'#'+(i+1))+'</div>'
-        +(c.nomClient?'<div style="font-size:.7rem;color:var(--moss)">Nom client : '+c.nomClient+'</div>':'')
+        +(c.nomClient?'<div style="font-size:.75rem;color:var(--moss);font-weight:600">✨ '+c.nomClient+'</div>':'')
         +'<div style="font-size:.7rem;color:var(--muted)">'+(c.robe||'')+(c.yeux?' · '+c.yeux:'')+(c.poids?' · '+c.poids+'g':'')+'</div>';
       var del=document.createElement('button');
       del.className='btn btn-danger btn-sm';del.textContent='✕';
@@ -1220,7 +1223,6 @@ function renderPortees(){
 
 function openPorteeDetail(pid){
   window._currentPorteeId = pid;
-  try{var ls=localStorage.getItem('pomsky_v2');if(ls)mergeState(JSON.parse(ls));}catch(e){}
   var portee=(state.portees||[]).find(function(p){return p.id===pid;});
   if(!portee) return;
   window._currentPorteeObj = portee;
@@ -1413,8 +1415,13 @@ function toggleEtape(pid,cid,key){
   if(!chiot) return;
   if(!chiot.etapes) chiot.etapes={};
   chiot.etapes[key]=!chiot.etapes[key];
-  saveState(); openPorteeDetail(pid); updateNavBadges();
-  toast(chiot.etapes[key]?'✅ Étape validée':'↩ Annulée');
+  var isDone=chiot.etapes[key];
+  // Update UI directly without full re-render
+  var btn=document.querySelector('.etape-check[data-pid="'+pid+'"][data-cid="'+cid+'"][data-key="'+key+'"]');
+  if(btn){btn.className='etape-check'+(isDone?' done':'');btn.textContent=isDone?'✓':'';}
+  saveState();
+  updateNavBadges();
+  toast(isDone?'✅ Étape validée':'↩ Annulée');
 }
 
 function setAffectation(pid,cid,type){
@@ -1442,9 +1449,24 @@ function archiverPortee(pid){
 }
 
 function populateChiotSel(){
-  const sel=document.getElementById('c-chiot');if(!sel)return;
+  // Reload from localStorage to get latest data
+  try{var r=localStorage.getItem('pomsky_v2');if(r)mergeState(JSON.parse(r));}catch(e){}
+  var sel=document.getElementById('c-chiot');if(!sel)return;
   sel.innerHTML='<option value="">— Choisir —</option>';
-  (state.portees||[]).filter(p=>p.statut==='active').forEach(p=>(p.chiots||[]).filter(c=>!c.vendu).forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=`${c.nom} (${p.femelle})`;sel.appendChild(o);}));
+  // Include active AND archived portees to show all chiots available
+  (state.portees||[]).forEach(function(p){
+    (p.chiots||[]).filter(function(c){return !c.vendu&&c.affectation!=='famille';}).forEach(function(c){
+      var o=document.createElement('option');
+      o.value=c.id;
+      o.textContent=(c.nomClient||c.codeProvisoire||c.nom)+' ('+p.femelle+' × '+p.male+')';
+      sel.appendChild(o);
+    });
+  });
+  // Also add option for future litter
+  var opt=document.createElement('option');
+  opt.value='future';
+  opt.textContent='Sur future portée';
+  sel.appendChild(opt);
 }
 
 // ══════ CRM ══════
@@ -1462,11 +1484,12 @@ function saveClient(){
   const depart=document.getElementById('c-depart').value;
   const notes=document.getElementById('c-notes').value;
   if(!prenom||!nom){toast('Nom et prénom requis');return;}
-  const acompte=Math.round(prix*0.30);
-  const caution=2000;
+  var acEl=document.getElementById('c-acompte');
+  var acompte=acEl&&acEl.value?parseFloat(acEl.value):Math.round(prix*0.30);
+  var caution=2000;
   const client={id:Date.now().toString(),prenom,nom,tel,email,chiot,prix,typeResa,paiement,visite,depart,notes,caution,
-    acompte,
-    paiements:paiement==='3fois'?[{label:'Acompte réservation (30%)',montant:acompte,recu:false,date:''},{label:'Virement 2',montant:Math.round((prix-acompte)/2),recu:false,date:''},{label:'Solde final',montant:prix-acompte-Math.round((prix-acompte)/2),recu:false,date:''}]:[{label:'Acompte réservation (30%)',montant:acompte,recu:false,date:''},{label:'Solde',montant:prix-acompte,recu:false,date:''}],
+    acompte:acompte,
+    paiements:paiement==='3fois'?[{label:'Acompte réservation',montant:acompte,recu:false,date:''},{label:'Virement 2',montant:Math.round((prix-acompte)/2),recu:false,date:''},{label:'Solde final',montant:prix-acompte-Math.round((prix-acompte)/2),recu:false,date:''}]:[{label:'Acompte réservation',montant:acompte,recu:false,date:''},{label:'Solde',montant:prix-acompte,recu:false,date:''}],
     chequeSteril:{montant:2000,recu:false,rendu:false},
     createdAt:new Date().toISOString()};
   if(chiot)(state.portees||[]).forEach(p=>{const c=(p.chiots||[]).find(x=>x.id===chiot);if(c)c.vendu=true;});
@@ -1487,6 +1510,8 @@ function saveClient(){
   switchSub('crm-liste');renderCRM();
 }
 function renderCRM(){
+  // Force reload state then populate
+  try{var r=localStorage.getItem('pomsky_v2');if(r)mergeState(JSON.parse(r));}catch(e){}
   populateChiotSel();
   var container=document.getElementById('crm-container');
   if(!container)return;
@@ -1505,7 +1530,12 @@ function renderCRM(){
         +'<div style="cursor:pointer;flex:1" data-cid="'+c.id+'" onclick="openClientModal(this.dataset.cid)">'
         +'<div class="crm-name">'+c.prenom+' '+c.nom+'</div>'
         +'<div class="crm-meta">'+(c.tel||'')+(c.email?' · '+c.email:'')+'</div>'
-        +(c.adresse?'<div class="crm-meta">'+c.adresse+'</div>':'')
+        +(c.adresse?'<div class="crm-meta" style="font-size:.7rem;color:var(--muted)">'+c.adresse+'</div>':'')
+        +(c.chiot?(function(){
+            var chiotNom=''; 
+            (state.portees||[]).forEach(function(p){(p.chiots||[]).forEach(function(ch){if(ch.id===c.chiot)chiotNom=(ch.nomClient||ch.codeProvisoire||ch.nom);});});
+            return chiotNom?'<div class="crm-meta" style="color:var(--moss);font-size:.72rem">🐶 '+chiotNom+'</div>':'';
+          })():'')
         +'</div>'
         +'<div style="display:flex;gap:.3rem;align-items:flex-start">'
         +'<span class="badge '+badgeCls+'">'+pct+'%</span>'
@@ -1540,23 +1570,29 @@ function deleteClientDirect(id){
 function editClient(id){
   var c=(state.clients||[]).find(function(x){return x.id===id;});
   if(!c)return;
-  // Pre-fill the form
-  document.getElementById('c-prenom').value=c.prenom||'';
-  document.getElementById('c-nom').value=c.nom||'';
-  document.getElementById('c-tel').value=c.tel||'';
-  document.getElementById('c-email').value=c.email||'';
-  if(document.getElementById('c-adresse'))document.getElementById('c-adresse').value=c.adresse||'';
-  document.getElementById('c-prix').value=c.prix||'';
-  document.getElementById('c-paiement').value=c.paiement||'comptant';
-  document.getElementById('c-type-resa').value=c.typeResa||'nee';
-  document.getElementById('c-visite').value=c.visite||'';
-  document.getElementById('c-depart').value=c.depart||'';
-  document.getElementById('c-notes').value=c.notes||'';
-  // Mark as editing
   _editingClientId=id;
-  var btn=document.getElementById('btn-save-client');
-  if(btn)btn.textContent='💾 Mettre à jour';
+  // Switch first, then fill after selects are populated
   switchSub('crm-new');
+  setTimeout(function(){
+    document.getElementById('c-prenom').value=c.prenom||'';
+    document.getElementById('c-nom').value=c.nom||'';
+    document.getElementById('c-tel').value=c.tel||'';
+    document.getElementById('c-email').value=c.email||'';
+    var adr=document.getElementById('c-adresse');if(adr)adr.value=c.adresse||'';
+    document.getElementById('c-prix').value=c.prix||'';
+    // Set acompte if field exists
+    var acEl=document.getElementById('c-acompte');if(acEl)acEl.value=c.acompte||'';
+    document.getElementById('c-paiement').value=c.paiement||'comptant';
+    document.getElementById('c-type-resa').value=c.typeResa||'nee';
+    document.getElementById('c-visite').value=c.visite||'';
+    document.getElementById('c-depart').value=c.depart||'';
+    document.getElementById('c-notes').value=c.notes||'';
+    // Set chiot
+    var chiotSel=document.getElementById('c-chiot');
+    if(chiotSel&&c.chiot){chiotSel.value=c.chiot;}
+    var btn=document.getElementById('btn-save-client');
+    if(btn)btn.textContent='💾 Mettre à jour';
+  },150);
   toast('Fiche chargée — modifiez et sauvegardez');
 }
 
@@ -2363,6 +2399,35 @@ function generateCertifFromFamille(clientId){
       setTimeout(function(){switchSub('ped-certificat');genCertificat();},300);
     }
   },400);
+}
+
+function updateAcomptePreview(){
+  var prix=parseFloat(document.getElementById('c-prix').value)||0;
+  var acEl=document.getElementById('c-acompte');
+  if(acEl&&!acEl.value&&prix>0){
+    acEl.placeholder='Suggéré : '+Math.round(prix*0.30)+'€ (30%)';
+  }
+  updatePaiements();
+}
+
+function updatePaiements(){
+  var prix=parseFloat(document.getElementById('c-prix').value)||0;
+  var acEl=document.getElementById('c-acompte');
+  var acompte=acEl&&acEl.value?parseFloat(acEl.value):Math.round(prix*0.30);
+  var mode=document.getElementById('c-paiement').value;
+  var prev=document.getElementById('paiement-preview');
+  if(!prev||!prix)return;
+  var solde=prix-acompte;
+  var txt='';
+  if(mode==='3fois'){
+    var v2=Math.round(solde/2);
+    var v3=solde-v2;
+    txt='Acompte: <strong>'+acompte+'€</strong> · Virement 2: <strong>'+v2+'€</strong> · Solde: <strong>'+v3+'€</strong> · Total: <strong>'+prix+'€</strong>';
+  } else {
+    txt='Acompte: <strong>'+acompte+'€</strong> · Solde: <strong>'+solde+'€</strong> · Total: <strong>'+prix+'€</strong>';
+  }
+  prev.innerHTML=txt;
+  prev.style.display='block';
 }
 
 function cancelAnimalEdit(){
