@@ -218,7 +218,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.7a.38 — 28 août 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a.40 — 28 août 2026</p>
     </div>
   </div>
 </div>
@@ -227,7 +227,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
 <div id="screen-admin" class="screen">
   <div class="topbar">
     <div class="topbar-brand"><span style="font-size:1.2rem">🌸</span><h2>Pomsky de Lilou</h2></div>
-    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.38</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
+    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.40</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
   </div>
   <nav class="bottom-nav">
     <button class="active" data-panel="tableau"><span class="ni">📊</span>Tableau</button>
@@ -349,7 +349,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <div id="panel-commercial" class="panel">
       <div class="mod-tabs">
         <button class="mod-tab active" data-sub="crm-liste">👨‍👩‍👧 Familles</button>
-        <button class="mod-tab" data-sub="crm-new">➕ Nouvelle famille</button>
+        <button class="mod-tab" data-sub="crm-new" onclick="_editingClientId=null">➕ Nouvelle famille</button>
         <button class="mod-tab" data-sub="crm-actions">✅ Actions com.</button>
       </div>
       <div id="crm-liste" class="subtab active"><div id="crm-container"></div></div>
@@ -793,6 +793,23 @@ function switchSub(id){
   const tab=par.querySelector('.mod-tab[data-sub="'+id+'"]');if(tab)tab.classList.add('active');
   // Populate pedigree selects when opening the form
   if (id==='crm-new') {
+    // Reset form only if NOT editing
+    if(!_editingClientId){
+      ['c-prenom','c-nom','c-tel','c-email','c-adresse','c-prix','c-acompte',
+       'c-visite','c-depart','c-notes'].forEach(function(fid){
+        var el=document.getElementById(fid);if(el)el.value='';
+      });
+      var acEl=document.getElementById('c-acompte');
+      if(acEl)acEl.placeholder='Suggestion : 30%';
+      var prev=document.getElementById('paiement-preview');
+      if(prev)prev.style.display='none';
+      var paiEl=document.getElementById('c-paiement');
+      if(paiEl)paiEl.value='comptant';
+      var resaEl=document.getElementById('c-type-resa');
+      if(resaEl)resaEl.value='nee';
+      var btn=document.getElementById('btn-save-client');
+      if(btn)btn.textContent='💾 Enregistrer la fiche';
+    }
     setTimeout(populateChiotSel, 50);
   }
   if (id==='ped-new') {
@@ -1175,7 +1192,10 @@ function renderPortees(){
   } else {
     active.forEach(function(p){
       var age=diffDays(p.naissance,t);
-      var dispos=(p.chiots||[]).filter(function(c){return !c.vendu&&c.affectation!=='famille';}).length;
+      var dispos=(p.chiots||[]).filter(function(c){
+        var hasClient=(state.clients||[]).some(function(cl){return cl.chiot===c.id;});
+        return !c.vendu&&!hasClient;
+      }).length;
       var notif=calcNotifPortee(p);
       var nxtVerm=(p.verm||[]).find(function(d){return d>=t;});
       var borderColor=notif.level==='rouge'?'#c0392b':notif.level==='orange'?'#e67e22':notif.level==='bleu'?'#2980b9':'#27ae60';
