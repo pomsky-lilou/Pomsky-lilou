@@ -218,7 +218,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.7a.34 — 27 août 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a.36 — 27 août 2026</p>
     </div>
   </div>
 </div>
@@ -227,7 +227,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
 <div id="screen-admin" class="screen">
   <div class="topbar">
     <div class="topbar-brand"><span style="font-size:1.2rem">🌸</span><h2>Pomsky de Lilou</h2></div>
-    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.34</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
+    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.36</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
   </div>
   <nav class="bottom-nav">
     <button class="active" data-panel="tableau"><span class="ni">📊</span>Tableau</button>
@@ -369,8 +369,10 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
           </div>
           <div class="form-row">
             <div class="field"><label>Chiot affecté</label><select id="c-chiot"><option value="">— Choisir —</option></select></div>
-            <div class="field"><label>Prix (€)</label><input type="number" id="c-prix" placeholder="1200"></div>
+            <div class="field"><label>Prix de vente (€)</label><input type="number" id="c-prix" placeholder="1200" oninput="updateAcomptePreview()"></div>
+            <div class="field"><label>Acompte réservation (€)</label><input type="number" id="c-acompte" placeholder="Suggestion : 30%" oninput="updatePaiements()"></div>
           </div>
+          <div id="paiement-preview" style="display:none;background:#f0f9f4;border-radius:6px;padding:.4rem .8rem;font-size:.78rem;color:var(--forest);margin-bottom:.3rem"></div>
           <div class="form-row">
             <div class="field"><label>Réservation</label><select id="c-type-resa"><option value="nee">Sur chiot né</option><option value="future">Future portée</option></select></div>
             <div class="field"><label>Paiement</label><select id="c-paiement"><option value="comptant">Comptant</option><option value="3fois">3x sans frais</option></select></div>
@@ -2321,7 +2323,7 @@ function generateContrat(clientId){
     // ART 3
     +'<h4>Art. 3 \u2014 Garantie</h4>'
     +'<p>La pr\u00e9sente vente est soumise uniquement \u00e0 la garantie des vices r\u00e9dhibitoires pr\u00e9vue aux articles L. 213-1 et suivants du Code Rural et de la P\u00eache Maritime, \u00e0 l\'exclusion de la garantie des vices cach\u00e9s de droit commun \u00e9dict\u00e9e \u00e0 l\'article 1641 du code civil.</p>'
-    +'<p>Il appartient \u00e0 l\'acheteur de prendre certaines pr\u00e9cautions au cours de la croissance du chiot jusqu\'\u00e0 12 mois :</p>'
+    +'<p>Il appartient \u00e0 l\'acheteur de prendre certaines pr\u00e9cautions au cours de la croissance du chiot jusqu\'\u00e0 12 mois afin de ne pas cr\u00e9er des facteurs favorisant l\'apparition d\'affections orthop\u00e9diques :</p>'
     +'<ul>'
     +'<li>Pas de longues promenades (sorties de 10 \u00e0 15 minutes jusqu\'\u00e0 6 mois, une heure par semaine entre 6 et 12 mois)</li>'
     +'<li>\u00c9viter de faire galoper le chiot (le trot est plus conseill\u00e9)</li>'
@@ -2332,15 +2334,16 @@ function generateContrat(clientId){
     +(chiot&&chiot.sexe==='M'?'<p>S\'il acqu\u00e9rit un chiot m\u00e2le, l\'acheteur reconna\u00eet avoir \u00e9t\u00e9 inform\u00e9 qu\'en d\u00e9pit d\'une descente normale dans le scrotum aux alentours de 6 semaines, les testicules peuvent remonter jusqu\'\u00e0 l\'\u00e2ge de six mois. L\'acqu\u00e9reur d\u00e9clare renoncer \u00e0 toute r\u00e9clamation, recours ou action, en cas d\'ectopie testiculaire.</p>':'')
 
     // ART 4
-    +'<h4>Art. 4 \u2014 Prix</h4>'
-    +'<p>Le chiot c\u00e9d\u00e9 par les pr\u00e9sentes est exclusivement destin\u00e9 \u00e0 la compagnie, m\u00eame si l\'option st\u00e9rilisation n\'a pas \u00e9t\u00e9 coch\u00e9e, ce \u00e0 quoi s\'oblige l\'acqu\u00e9reur, en contrepartie d\'une ristourne de deux mille euros (2 000\u20ac, ch\u00e8que de ristourne en attente et non encaiss\u00e9), sur le prix de vente fix\u00e9 \u00e0 '+prix+'\u20ac.</p>'
+    +'<h4>Art. 4 \u2014 Prix :</h4>'
+    +'<p>Afin d\'\u00e9viter que ses chiens ne se retrouvent impliqu\u00e9s dans des mariages inopportuns, proscrits, ou susceptibles de g\u00e9n\u00e9rer des sujets de mauvaise qualit\u00e9, ce qui nuirait \u00e0 la r\u00e9putation de son \u00e9levage et \u00e0 la lign\u00e9e cr\u00e9\u00e9s par le vendeur, il est d\u00e9terminant du consentement de ce dernier, sans quoi il n\'aurait pas contract\u00e9, que le chiot c\u00e9d\u00e9 par les pr\u00e9sentes soit exclusivement destin\u00e9 \u00e0 la compagnie, m\u00eame si l\'option st\u00e9rilisation n\'a pas \u00e9t\u00e9 coch\u00e9e, ce \u00e0 quoi s\'oblige l\'acqu\u00e9reur, en contrepartie d\'une ristourne de deux mille euros, 2\u202f000\u20ac (ch\u00e8que de ristourne en attente et non encaiss\u00e9), sur le prix de vente fix\u00e9 \u00e0 <strong>'+(prix+2000)+'\u20ac</strong> nt TVA 20%.</p>'
     +'<table>'
-    +'<tr><td>Prix de vente</td><td>'+prix+'\u20ac</td></tr>'
-    +'<tr><td>Ristourne st\u00e9rilisation</td><td>2 000\u20ac (ch\u00e8que non encaiss\u00e9, rendu sur certificat)</td></tr>'
+    +'<tr><td>Prix de vente total (ch\u00e8que ristourne inclus)</td><td><strong>'+(prix+2000)+'\u20ac</strong></td></tr>'
+    +'<tr><td>Dont ristourne st\u00e9rilisation (ch\u00e8que non encaiss\u00e9)</td><td>2\u202f000\u20ac</td></tr>'
+    +'<tr><td>Prix net hors ristourne</td><td>'+prix+'\u20ac</td></tr>'
     +'</table>'
-    +'<p>Sur pr\u00e9sentation du certificat de st\u00e9rilisation r\u00e9alis\u00e9e dans le d\u00e9lai imparti \u00e0 l\'article 2, le vendeur renverra \u00e0 l\'acheteur la ristourne.</p>'
-
-    // ART 5
+    +'<p>Sur pr\u00e9sentation du certificat de st\u00e9rilisation r\u00e9alis\u00e9e dans le d\u00e9lai imparti \u00e0 l\'article 2 des pr\u00e9sentes, le vendeur renverra \u00e0 l\'acheteur la ristourne qui sera acquise de droit.</p>'
+    +'<p>Pass\u00e9 le d\u00e9lai imparti \u00e0 l\'article 2, si les termes n\'ont pas \u00e9t\u00e9 respect\u00e9s, l\'acqu\u00e9reur devra s\'acquitter du paiement de la ristourne, soit 2\u202f000\u20ac.</p>'
+        // ART 5
     +'<h4>Art. 5 \u2014 Paiement &amp; R\u00e9serve de propri\u00e9t\u00e9</h4>'
     +'<p>Le prix convenu, apr\u00e8s \u00e9ventuelle r\u00e9duction, a \u00e9t\u00e9 pay\u00e9 par '+(c.paiements||[]).length+' virement(s) :</p>'
     +'<table><tr><th>Versement</th><th>Montant</th><th>Statut</th></tr>'+paiementsRows+'</table>'
