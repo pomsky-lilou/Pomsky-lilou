@@ -218,7 +218,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.7a.36 — 27 août 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a.37 — 27 août 2026</p>
     </div>
   </div>
 </div>
@@ -227,7 +227,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
 <div id="screen-admin" class="screen">
   <div class="topbar">
     <div class="topbar-brand"><span style="font-size:1.2rem">🌸</span><h2>Pomsky de Lilou</h2></div>
-    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.36</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
+    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.37</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
   </div>
   <nav class="bottom-nav">
     <button class="active" data-panel="tableau"><span class="ni">📊</span>Tableau</button>
@@ -1460,14 +1460,17 @@ function archiverPortee(pid){
 function populateChiotSel(){
   try{var r=localStorage.getItem('pomsky_v2');if(r)mergeState(JSON.parse(r));}catch(e){}
   var sel=document.getElementById('c-chiot');if(!sel)return;
-  var currentVal=sel.value;
+  var currentVal=sel.value||(_editingClientId?(function(){
+    var ec=(state.clients||[]).find(function(x){return x.id===_editingClientId;});
+    return ec?ec.chiot:'';
+  })():'');
   sel.innerHTML='<option value="">— Choisir —</option>';
-  // Show all chiots not yet sold/assigned to a family
   (state.portees||[]).forEach(function(p){
     (p.chiots||[]).forEach(function(c){
-      // Only exclude if already assigned to a client (vendu=true AND a client exists)
-      var hasClient=(state.clients||[]).some(function(cl){return cl.chiot===c.id;});
-      if(hasClient) return; // skip - already has a family
+      // Include: not yet in a family OR currently assigned to the client being edited
+      var clientWithChiot=(state.clients||[]).find(function(cl){return cl.chiot===c.id;});
+      var isCurrentClientChiot=clientWithChiot&&clientWithChiot.id===_editingClientId;
+      if(clientWithChiot&&!isCurrentClientChiot) return; // taken by another family
       var o=document.createElement('option');
       o.value=c.id;
       var nom=c.nomClient?('✨ '+c.nomClient+' ('+c.codeProvisoire+')'):(c.codeProvisoire||c.nom);
@@ -1475,29 +1478,28 @@ function populateChiotSel(){
       sel.appendChild(o);
     });
   });
-  // Restore previous value if still available
   if(currentVal) sel.value=currentVal;
 }
 
 // ══════ CRM ══════
 function saveClient(){
-  const prenom=document.getElementById('c-prenom').value.trim();
-  const nom=document.getElementById('c-nom').value.trim();
-  const tel=document.getElementById('c-tel').value.trim();
-  const email=document.getElementById('c-email').value.trim();
-  const adresse=(document.getElementById('c-adresse')||{value:''}).value.trim();
-  const chiot=document.getElementById('c-chiot').value;
-  const prix=parseFloat(document.getElementById('c-prix').value)||0;
-  const typeResa=document.getElementById('c-type-resa').value;
-  const paiement=document.getElementById('c-paiement').value;
-  const visite=document.getElementById('c-visite').value;
-  const depart=document.getElementById('c-depart').value;
-  const notes=document.getElementById('c-notes').value;
+  var prenom=document.getElementById('c-prenom').value.trim();
+  var nom=document.getElementById('c-nom').value.trim();
+  var tel=document.getElementById('c-tel').value.trim();
+  var email=document.getElementById('c-email').value.trim();
+  var adresse=(document.getElementById('c-adresse')||{value:''}).value.trim();
+  var chiot=document.getElementById('c-chiot').value;
+  var prix=parseFloat(document.getElementById('c-prix').value)||0;
+  var typeResa=document.getElementById('c-type-resa').value;
+  var paiement=document.getElementById('c-paiement').value;
+  var visite=document.getElementById('c-visite').value;
+  var depart=document.getElementById('c-depart').value;
+  var notes=document.getElementById('c-notes').value;
   if(!prenom||!nom){toast('Nom et prénom requis');return;}
   var acEl=document.getElementById('c-acompte');
   var acompte=acEl&&acEl.value?parseFloat(acEl.value):Math.round(prix*0.30);
   var caution=2000;
-  const client={id:Date.now().toString(),prenom,nom,tel,email,chiot,prix,typeResa,paiement,visite,depart,notes,caution,
+  var client={id:Date.now().toString(),prenom,nom,tel,email,chiot,prix,typeResa,paiement,visite,depart,notes,caution,
     acompte:acompte,
     paiements:paiement==='3fois'?[{label:'Acompte réservation',montant:acompte,recu:false,date:''},{label:'Virement 2',montant:Math.round((prix-acompte)/2),recu:false,date:''},{label:'Solde final',montant:prix-acompte-Math.round((prix-acompte)/2),recu:false,date:''}]:[{label:'Acompte réservation',montant:acompte,recu:false,date:''},{label:'Solde',montant:prix-acompte,recu:false,date:''}],
     chequeSteril:{montant:2000,recu:false,rendu:false},
@@ -1630,29 +1632,29 @@ function delClient(){if(!state.selClient)return;if(!confirm('Supprimer ce dossie
 
 // ══════ FINANCE ══════
 function renderFinance(){
-  const recettes=(state.clients||[]).reduce((a,c)=>{const r=(c.paiements||[]).filter(p=>p.recu).reduce((s,p)=>s+p.montant,0);return a+r;},0);
-  const depenses=(state.depenses||[]).reduce((a,d)=>a+(parseFloat(d.montant)||0),0);
-  const solde=recettes-depenses;
-  const prev=(state.clients||[]).reduce((a,c)=>a+(parseFloat(c.prix)||0),0);
+  var recettes=(state.clients||[]).reduce((a,c)=>{const r=(c.paiements||[]).filter(p=>p.recu).reduce((s,p)=>s+p.montant,0);return a+r;},0);
+  var depenses=(state.depenses||[]).reduce((a,d)=>a+(parseFloat(d.montant)||0),0);
+  var solde=recettes-depenses;
+  var prev=(state.clients||[]).reduce((a,c)=>a+(parseFloat(c.prix)||0),0);
   document.getElementById('fin-stats').innerHTML=`
     <div class="stat-card"><span class="stat-value" style="color:var(--ok)">${recettes.toLocaleString('fr-FR')}€</span><div class="stat-label">Encaissé</div></div>
     <div class="stat-card"><span class="stat-value" style="color:var(--alert)">${depenses.toLocaleString('fr-FR')}€</span><div class="stat-label">Dépenses</div></div>
     <div class="stat-card"><span class="stat-value" style="color:${solde>=0?'var(--ok)':'var(--alert)'}">${solde.toLocaleString('fr-FR')}€</span><div class="stat-label">Solde</div></div>
     <div class="stat-card"><span class="stat-value">${prev.toLocaleString('fr-FR')}€</span><div class="stat-label">CA prévisionnel</div></div>`;
-  const pct=prev?Math.min(Math.round(recettes/prev*100),100):0;
+  var pct=prev?Math.min(Math.round(recettes/prev*100),100):0;
   document.getElementById('fin-ca').innerHTML=`<div style="display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:.28rem"><span>Encaissé : ${recettes.toLocaleString('fr-FR')}€</span><span>Prévisionnel : ${prev.toLocaleString('fr-FR')}€</span></div><div class="prog-bar-bg" style="height:12px"><div class="prog-bar-fill" style="width:${pct}%;background:var(--ok)"></div></div><div style="text-align:right;font-size:.73rem;color:var(--muted);margin-top:.15rem">${pct}%</div>`;
-  const enAtt=(state.clients||[]).reduce((a,c)=>{const r=(c.paiements||[]).filter(p=>p.recu).reduce((s,p)=>s+p.montant,0);return a+(c.prix-r);},0);
+  var enAtt=(state.clients||[]).reduce((a,c)=>{const r=(c.paiements||[]).filter(p=>p.recu).reduce((s,p)=>s+p.montant,0);return a+(c.prix-r);},0);
   document.getElementById('fin-treso').innerHTML=`<div class="depense-row"><span>Recettes encaissées</span><span style="color:var(--ok);font-weight:600">${recettes.toLocaleString('fr-FR')}€</span></div><div class="depense-row"><span>En attente</span><span style="color:var(--warn);font-weight:600">${enAtt.toLocaleString('fr-FR')}€</span></div><div class="depense-row"><span>Dépenses</span><span style="color:var(--alert);font-weight:600">-${depenses.toLocaleString('fr-FR')}€</span></div><div class="depense-row" style="border-top:2px solid var(--border);font-weight:700"><span>Solde</span><span style="color:${solde>=0?'var(--ok)':'var(--alert)'}">${solde.toLocaleString('fr-FR')}€</span></div>`;
-  const dl=document.getElementById('dep-list');
+  var dl=document.getElementById('dep-list');
   if(dl){const deps=state.depenses||[];dl.innerHTML=!deps.length?'<p style="color:var(--muted);font-size:.83rem">Aucune dépense.</p>':deps.map(d=>`<div class="depense-row"><div><div style="font-size:.83rem;font-weight:600">${DEP_CAT[d.categorie]||d.categorie}</div><div style="font-size:.7rem;color:var(--muted)">${fmtShort(d.date)} · ${d.desc||''}</div></div><div style="display:flex;align-items:center;gap:.35rem"><span style="color:var(--alert);font-weight:700">-${parseFloat(d.montant).toLocaleString('fr-FR')}€</span><button class="btn btn-danger btn-sm" onclick="delDep('${d.id}')">✕</button></div></div>`).join('');}
-  const rl=document.getElementById('rec-list');
+  var rl=document.getElementById('rec-list');
   if(rl){rl.innerHTML=!(state.clients||[]).length?'<p style="color:var(--muted);font-size:.83rem">Aucune recette.</p>':(state.clients||[]).map(c=>{const r=(c.paiements||[]).filter(p=>p.recu).reduce((a,p)=>a+p.montant,0);return `<div class="depense-row"><div><div style="font-size:.83rem;font-weight:600">${c.prenom} ${c.nom}</div><div style="font-size:.7rem;color:var(--muted)">${c.paiement==='3fois'?'3x sans frais':'Comptant'}</div></div><div style="text-align:right"><div style="color:var(--ok);font-weight:700">${r.toLocaleString('fr-FR')}€</div><div style="font-size:.7rem;color:var(--muted)">/${(parseFloat(c.prix)||0).toLocaleString('fr-FR')}€</div></div></div>`;}).join('');}
 }
 function saveDepense(){
-  const cat=document.getElementById('d-cat').value;
-  const m=document.getElementById('d-montant').value;
-  const d=document.getElementById('d-date').value;
-  const desc=document.getElementById('d-desc').value;
+  var cat=document.getElementById('d-cat').value;
+  var m=document.getElementById('d-montant').value;
+  var d=document.getElementById('d-date').value;
+  var desc=document.getElementById('d-desc').value;
   if(!m||!d){toast('Montant et date requis');return;}
   if(!state.depenses)state.depenses=[];
   state.depenses.unshift({id:Date.now().toString(),categorie:cat,montant:parseFloat(m),date:d,desc});
@@ -1664,17 +1666,17 @@ function delDep(id){state.depenses=(state.depenses||[]).filter(d=>d.id!==id);sav
 // ══════ OUTILS ══════
 function renderOutils(){renderOutilsLive();renderMessages();renderArdoise();renderReports();renderTaskMgr();renderPeriodics();renderAccounts();const ec=document.getElementById('email-cfg');if(ec)ec.value=state.emailConfig||'';}
 function renderOutilsLive(){
-  const container=document.getElementById('outils-live');if(!container)return;
-  const t=today();const dd=(state.dayData||{})[t]||{};let html='';
+  var container=document.getElementById('outils-live');if(!container)return;
+  var t=today();const dd=(state.dayData||{})[t]||{};let html='';
   ['matin','soir'].forEach(vac=>{
-    const v=dd[vac];const tasks=(vac==='matin'?state.tasksMatin:state.tasksSoir)||[];
+    var v=dd[vac];const tasks=(vac==='matin'?state.tasksMatin:state.tasksSoir)||[];
     if(!v){html+=`<div class="card" style="margin-bottom:.5rem"><p style="font-size:.8rem;color:var(--muted)">${vac==='matin'?'☀️ Matin':'🌙 Soir'} — En attente.</p></div>`;return;}
-    const done=Object.values(v.taskStatus||{}).filter(x=>x&&x.done).length;
-    const pct=tasks.length?Math.round(done/tasks.length*100):0;
+    var done=Object.values(v.taskStatus||{}).filter(x=>x&&x.done).length;
+    var pct=tasks.length?Math.round(done/tasks.length*100):0;
     html+=`<div class="card" style="margin-bottom:.5rem"><div style="display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:.2rem"><strong>${vac==='matin'?'☀️ Matin':'🌙 Soir'} — ${v.worker||'En cours'}</strong><span>${done}/${tasks.length} · ${pct}%</span></div><div class="prog-bar-bg"><div class="prog-bar-fill" style="width:${pct}%;background:${pct===100?'var(--ok)':'var(--moss)'}"></div></div>${v.closed?'<p style="font-size:.7rem;color:var(--ok)">✓ Clôturé</p>':''}</div>`;
   });
   container.innerHTML=html||'<div class="card"><p style="color:var(--muted);font-size:.83rem">Aucune activité.</p></div>';
-  const ad=document.getElementById('outils-alerts');
+  var ad=document.getElementById('outils-alerts');
   if(ad){const alerts=state.alerts||[];ad.innerHTML=!alerts.length?'<p style="color:var(--muted);font-size:.83rem">Aucune alerte.</p>':alerts.map(a=>`<div style="background:#fff0f0;border:1.5px solid #f5c6cb;border-radius:7px;padding:.45rem .75rem;margin-bottom:.32rem;font-size:.8rem;display:flex;justify-content:space-between;align-items:center"><span><strong style="color:var(--alert)">${a.type}</strong> · ${a.time} · ${a.user||''}</span><span class="badge badge-${a.status==='effectué'?'ok':a.status==='lu'?'warn':'alert'}">${a.status||'envoyé'}</span></div>`).join('');}
 }
 function publishMsg(){const type=document.getElementById('msg-type').value;const body=document.getElementById('msg-body').value.trim();if(!body){toast('Rédigez un message');return;}if(!state.messages)state.messages=[];state.messages.unshift({id:Date.now().toString(),type,body,author:state.currentUser.name,time:fmtTime(new Date()),date:today()});document.getElementById('msg-body').value='';saveState();renderMessages();toast('✅ Publié');}
@@ -1705,16 +1707,16 @@ function saveEmail(){state.emailConfig=document.getElementById('email-cfg').valu
 
 // ══════ CALENDRIER ══════
 function renderCalendar(){
-  const yr=state.calYear;const mo=state.calMonth;
-  const MOIS=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  var yr=state.calYear;const mo=state.calMonth;
+  var MOIS=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
   document.getElementById('cal-title').textContent=MOIS[mo]+' '+yr;
   document.getElementById('cal-header').innerHTML=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].map(d=>`<div class="cal-day-name">${d}</div>`).join('');
-  const events={};
-  const addEv=(d,l,t)=>{if(!events[d])events[d]=[];events[d].push({l,t});};
+  var events={};
+  var addEv=(d,l,t)=>{if(!events[d])events[d]=[];events[d].push({l,t});};
   (state.saillies||[]).filter(s=>s.statut==='active').forEach(s=>{addEv(s.date,`⚡${s.femelle}`,'saillie');addEv(s.terme,`🍼${s.femelle}`,'terme');addEv(s.isolement,`🔒${s.femelle}`,'alerte');if(s.verm1)addEv(s.verm1,`💊${s.femelle}`,'alerte');});
   (state.portees||[]).filter(p=>p.statut==='active').forEach(p=>{addEv(p.veto8sem,`🏥${p.femelle}`,'veto');(p.verm||[]).forEach(d=>addEv(d,`💊${p.femelle}`,'alerte'));});
   (state.clients||[]).forEach(c=>{if(c.visite)addEv(c.visite,`👤${c.prenom}`,'rdv');if(c.depart)addEv(c.depart,`✈️${c.prenom}`,'rdv');});
-  const firstDay=new Date(yr,mo,1).getDay();const dim=new Date(yr,mo+1,0).getDate();const prevDays=new Date(yr,mo,0).getDate();const offset=(firstDay+6)%7;const t=today();
+  var firstDay=new Date(yr,mo,1).getDay();const dim=new Date(yr,mo+1,0).getDate();const prevDays=new Date(yr,mo,0).getDate();const offset=(firstDay+6)%7;const t=today();
   let html='';let dc=1;let nc=1;
   for(let i=0;i<42;i++){
     if(i<offset){html+=`<div class="cal-day other-month"><div class="cal-day-num">${prevDays-offset+i+1}</div></div>`;}
@@ -1730,16 +1732,16 @@ let pedFilter='all';
 function autoCreatePedigreeFiche(chiotId, nom, sexe, yeux, portee) {
   if (!state.animaux) state.animaux = [];
   // Check if fiche already exists for this chiot
-  const existing = state.animaux.find(a => a.chiotId === chiotId);
+  var existing = state.animaux.find(a => a.chiotId === chiotId);
   if (existing) return;
   // Get parent info from saillie
-  const saillie = (state.saillies||[]).find(s => s.id === portee.saillieId);
-  const pere = saillie ? saillie.male : '';
-  const mere = saillie ? saillie.femelle : '';
+  var saillie = (state.saillies||[]).find(s => s.id === portee.saillieId);
+  var pere = saillie ? saillie.male : '';
+  var mere = saillie ? saillie.femelle : '';
   // Get GP from parent pedigree fiches if they exist
-  const fichePere = state.animaux.find(a => a.surnom === pere || a.nom.includes(pere));
-  const ficheMere = state.animaux.find(a => a.surnom === mere || a.nom.includes(mere));
-  const fiche = {
+  var fichePere = state.animaux.find(a => a.surnom === pere || a.nom.includes(pere));
+  var ficheMere = state.animaux.find(a => a.surnom === mere || a.nom.includes(mere));
+  var fiche = {
     id: 'auto_' + chiotId,
     chiotId: chiotId,
     porteeId: portee.id,
@@ -1794,22 +1796,22 @@ function syncPorteesToPedigree() {
 
 function populatePedigreeSelects() {
   // Populate all parent/GP selects with animals from pedigree database
-  const animals = state.animaux || [];
-  const selectIds = ['pa-pere','pa-mere','pa-gpp','pa-gmp','pa-gpm','pa-gmm'];
+  var animals = state.animaux || [];
+  var selectIds = ['pa-pere','pa-mere','pa-gpp','pa-gmp','pa-gpm','pa-gmm'];
   selectIds.forEach(function(id) {
-    const sel = document.getElementById(id);
+    var sel = document.getElementById(id);
     if (!sel) return;
-    const currentVal = sel.value;
+    var currentVal = sel.value;
     sel.innerHTML = '<option value="">— Choisir dans l\'élevage —</option>';
     // Sort: males first for père/GP, females first for mère/GM
-    const isMale = id==='pa-pere'||id==='pa-gpp'||id==='pa-gpm'||id==='pa-agpp1'||id==='pa-agpm1'||id==='pa-agpat1'||id==='pa-agmat1';
-    const sorted = [...animals].sort(function(a,b) {
+    var isMale = id==='pa-pere'||id==='pa-gpp'||id==='pa-gpm'||id==='pa-agpp1'||id==='pa-agpm1'||id==='pa-agpat1'||id==='pa-agmat1';
+    var sorted = [...animals].sort(function(a,b) {
       if (isMale) { if(a.sexe==='M'&&b.sexe!=='M') return -1; if(b.sexe==='M'&&a.sexe!=='M') return 1; }
       else { if(a.sexe==='F'&&b.sexe!=='F') return -1; if(b.sexe==='F'&&a.sexe!=='F') return 1; }
       return a.nom.localeCompare(b.nom);
     });
     sorted.forEach(function(a) {
-      const o = document.createElement('option');
+      var o = document.createElement('option');
       o.value = a.nom;
       o.textContent = (a.sexe==='M'?'♂ ':'♀ ') + a.nom + (a.surnom?' ('+a.surnom+')':'');
       sel.appendChild(o);
@@ -1820,8 +1822,8 @@ function populatePedigreeSelects() {
 
 function getAnimalName(id) {
   // Returns nom from select value or libre text input
-  const sel = document.getElementById(id);
-  const libre = document.getElementById(id + '-libre');
+  var sel = document.getElementById(id);
+  var libre = document.getElementById(id + '-libre');
   if (sel && sel.value) return sel.value;
   if (libre && libre.value.trim()) return libre.value.trim();
   return '';
@@ -1829,12 +1831,12 @@ function getAnimalName(id) {
 
 function autoFillGP() {
   // When père is selected, auto-fill GP from his pedigree fiche
-  const pereNom = getAnimalName('pa-pere');
-  const mereNom = getAnimalName('pa-mere');
-  const animals = state.animaux || [];
+  var pereNom = getAnimalName('pa-pere');
+  var mereNom = getAnimalName('pa-mere');
+  var animals = state.animaux || [];
 
-  const fichePere = animals.find(function(a){ return a.nom === pereNom || a.surnom === pereNom; });
-  const ficheMere = animals.find(function(a){ return a.nom === mereNom || a.surnom === mereNom; });
+  var fichePere = animals.find(function(a){ return a.nom === pereNom || a.surnom === pereNom; });
+  var ficheMere = animals.find(function(a){ return a.nom === mereNom || a.surnom === mereNom; });
 
   if (fichePere) {
     // GP paternels depuis la fiche du père
@@ -1842,14 +1844,14 @@ function autoFillGP() {
     setSelectOrLibre('pa-gmp', (fichePere&&fichePere.parents?fichePere.parents.mere:"") || (fichePere&&fichePere.gp?fichePere.gp.gmp:"") || '');
     // AGP depuis les GP du père
     if ((fichePere&&fichePere.parents?fichePere.parents.pere:"")) {
-      const ficheGPP = animals.find(function(a){ return a.nom === fichePere.parents.pere; });
+      var ficheGPP = animals.find(function(a){ return a.nom === fichePere.parents.pere; });
       if (ficheGPP) {
         setVal('pa-agpp1', (ficheGPP&&ficheGPP.parents?ficheGPP.parents.pere:"") || '');
         setVal('pa-agpp2', (ficheGPP&&ficheGPP.parents?ficheGPP.parents.mere:"") || '');
       }
     }
     if ((fichePere&&fichePere.parents?fichePere.parents.mere:"")) {
-      const ficheGMP = animals.find(function(a){ return a.nom === fichePere.parents.mere; });
+      var ficheGMP = animals.find(function(a){ return a.nom === fichePere.parents.mere; });
       if (ficheGMP) {
         setVal('pa-agpm1', (ficheGMP&&ficheGMP.parents?ficheGMP.parents.pere:"") || '');
         setVal('pa-agpm2', (ficheGMP&&ficheGMP.parents?ficheGMP.parents.mere:"") || '');
@@ -1863,14 +1865,14 @@ function autoFillGP() {
     setSelectOrLibre('pa-gmm', (ficheMere&&ficheMere.parents?ficheMere.parents.mere:"") || (ficheMere&&ficheMere.gp?ficheMere.gp.gmm:"") || '');
     // AGP depuis les GP de la mère
     if ((ficheMere&&ficheMere.parents?ficheMere.parents.pere:"")) {
-      const ficheGPM = animals.find(function(a){ return a.nom === ficheMere.parents.pere; });
+      var ficheGPM = animals.find(function(a){ return a.nom === ficheMere.parents.pere; });
       if (ficheGPM) {
         setVal('pa-agpat1', (ficheGPM&&ficheGPM.parents?ficheGPM.parents.pere:"") || '');
         setVal('pa-agpat2', (ficheGPM&&ficheGPM.parents?ficheGPM.parents.mere:"") || '');
       }
     }
     if ((ficheMere&&ficheMere.parents?ficheMere.parents.mere:"")) {
-      const ficheGMM = animals.find(function(a){ return a.nom === ficheMere.parents.mere; });
+      var ficheGMM = animals.find(function(a){ return a.nom === ficheMere.parents.mere; });
       if (ficheGMM) {
         setVal('pa-agmat1', (ficheGMM&&ficheGMM.parents?ficheGMM.parents.pere:"") || '');
         setVal('pa-agmat2', (ficheGMM&&ficheGMM.parents?ficheGMM.parents.mere:"") || '');
@@ -1881,8 +1883,8 @@ function autoFillGP() {
 
 function setSelectOrLibre(selectId, val) {
   if (!val) return;
-  const sel = document.getElementById(selectId);
-  const libre = document.getElementById(selectId + '-libre');
+  var sel = document.getElementById(selectId);
+  var libre = document.getElementById(selectId + '-libre');
   if (sel) {
     // Try to find in options
     let found = false;
@@ -1894,38 +1896,38 @@ function setSelectOrLibre(selectId, val) {
 }
 
 function setVal(id, val) {
-  const el = document.getElementById(id);
+  var el = document.getElementById(id);
   if (el && val) el.value = val;
 }
 
 function saveAnimal(){
-  const nom=document.getElementById('pa-nom').value.trim();
-  const surnom=document.getElementById('pa-surnom').value.trim();
-  const sexe=document.getElementById('pa-sexe').value;
-  const naiss=document.getElementById('pa-naiss').value;
-  const statut=document.getElementById('pa-statut').value;
-  const robe=document.getElementById('pa-robe').value.trim();
-  const yeux=document.getElementById('pa-yeux').value.trim();
-  const puce=document.getElementById('pa-puce').value.trim();
-  const affixe=document.getElementById('pa-affixe').value.trim();
-  const pere=getAnimalName('pa-pere');
-  const mere=getAnimalName('pa-mere');
-  const gpp=getAnimalName('pa-gpp');
-  const gmp=getAnimalName('pa-gmp');
-  const gpm=getAnimalName('pa-gpm');
-  const gmm=getAnimalName('pa-gmm');
-  const agpp1=document.getElementById('pa-agpp1').value.trim();
-  const agpp2=document.getElementById('pa-agpp2').value.trim();
-  const agpm1=document.getElementById('pa-agpm1').value.trim();
-  const agpm2=document.getElementById('pa-agpm2').value.trim();
-  const agpat1=document.getElementById('pa-agpat1').value.trim();
-  const agpat2=document.getElementById('pa-agpat2').value.trim();
-  const agmat1=document.getElementById('pa-agmat1').value.trim();
-  const agmat2=document.getElementById('pa-agmat2').value.trim();
-  const notes=document.getElementById('pa-notes').value.trim();
+  var nom=document.getElementById('pa-nom').value.trim();
+  var surnom=document.getElementById('pa-surnom').value.trim();
+  var sexe=document.getElementById('pa-sexe').value;
+  var naiss=document.getElementById('pa-naiss').value;
+  var statut=document.getElementById('pa-statut').value;
+  var robe=document.getElementById('pa-robe').value.trim();
+  var yeux=document.getElementById('pa-yeux').value.trim();
+  var puce=document.getElementById('pa-puce').value.trim();
+  var affixe=document.getElementById('pa-affixe').value.trim();
+  var pere=getAnimalName('pa-pere');
+  var mere=getAnimalName('pa-mere');
+  var gpp=getAnimalName('pa-gpp');
+  var gmp=getAnimalName('pa-gmp');
+  var gpm=getAnimalName('pa-gpm');
+  var gmm=getAnimalName('pa-gmm');
+  var agpp1=document.getElementById('pa-agpp1').value.trim();
+  var agpp2=document.getElementById('pa-agpp2').value.trim();
+  var agpm1=document.getElementById('pa-agpm1').value.trim();
+  var agpm2=document.getElementById('pa-agpm2').value.trim();
+  var agpat1=document.getElementById('pa-agpat1').value.trim();
+  var agpat2=document.getElementById('pa-agpat2').value.trim();
+  var agmat1=document.getElementById('pa-agmat1').value.trim();
+  var agmat2=document.getElementById('pa-agmat2').value.trim();
+  var notes=document.getElementById('pa-notes').value.trim();
   if(!nom){toast('Le nom de pedigree est requis');return;}
   if(!state.animaux)state.animaux=[];
-  const animal={
+  var animal={
     id:Date.now().toString(),nom,surnom,sexe,naiss,statut,robe,yeux,puce,affixe,notes,
     parents:{pere,mere},
     gp:{gpp,gmp,gpm,gmm},
@@ -1935,13 +1937,13 @@ function saveAnimal(){
   if (_editingAnimalId) {
     // Mode édition : on remplace la fiche existante
     animal.id          = _editingAnimalId;
-    const existing     = (state.animaux||[]).find(x=>x.id===_editingAnimalId);
+    var existing     = (state.animaux||[]).find(x=>x.id===_editingAnimalId);
     animal.createdAt   = (existing&&existing.createdAt) || animal.createdAt;
     animal.chiotId     = (existing&&existing.chiotId);
     animal.autoCreated = false;
     state.animaux      = (state.animaux||[]).map(function(x){ return x.id===_editingAnimalId ? animal : x; });
     _editingAnimalId   = null;
-    const btn=document.getElementById('btn-save-animal');
+    var btn=document.getElementById('btn-save-animal');
     if(btn) btn.textContent='💾 Enregistrer';
     saveState(); toast('✅ Fiche mise à jour');
   } else {
@@ -1961,21 +1963,21 @@ function filterAnimaux(sex){
 }
 
 function renderAnimaux(){
-  const list=document.getElementById('ped-animaux-list');if(!list)return;
+  var list=document.getElementById('ped-animaux-list');if(!list)return;
   let animals=state.animaux||[];
   if(pedFilter!=='all')animals=animals.filter(a=>a.sexe===pedFilter);
   if(!animals.length){list.innerHTML='<div class="card"><p style="color:var(--muted);font-size:.83rem">Aucun animal enregistré.</p></div>';return;}
-  const statutBadge={actif:'badge-ok',retraite:'badge-muted',decede:'badge-alert',vendu:'badge-info'};
-  const statutLabel={actif:'Actif',retraite:'Retraite',decede:'Décédé',vendu:'Vendu'};
+  var statutBadge={actif:'badge-ok',retraite:'badge-muted',decede:'badge-alert',vendu:'badge-info'};
+  var statutLabel={actif:'Actif',retraite:'Retraite',decede:'Décédé',vendu:'Vendu'};
   // Count display
-  const countEl = document.getElementById('ped-count');
+  var countEl = document.getElementById('ped-count');
   if (countEl) countEl.textContent = animals.length + ' animal(s)';
 
   list.innerHTML = animals.map(function(a) {
-    const sB = statutBadge[a.statut] || 'badge-muted';
-    const sL = statutLabel[a.statut] || a.statut;
-    const pereShort = a.parents && a.parents.pere ? a.parents.pere.split(' ').slice(0,3).join(' ') : '';
-    const meta = [
+    var sB = statutBadge[a.statut] || 'badge-muted';
+    var sL = statutLabel[a.statut] || a.statut;
+    var pereShort = a.parents && a.parents.pere ? a.parents.pere.split(' ').slice(0,3).join(' ') : '';
+    var meta = [
       a.surnom ? '"' + a.surnom + '"' : '',
       a.naiss ? fmtShort(a.naiss) : '',
       a.robe || ''
@@ -1996,7 +1998,7 @@ function renderAnimaux(){
 }
 
 function openAnimalDetail(id){
-  const a=(state.animaux||[]).find(x=>x.id===id);
+  var a=(state.animaux||[]).find(x=>x.id===id);
   if(!a)return;
   _editingAnimalId = id;
   document.getElementById('pa-nom').value=a.nom||'';
@@ -2027,7 +2029,7 @@ function openAnimalDetail(id){
     setSelectOrLibre('pa-gpm', (a&&a.gp?a.gp.gpm:"")||'');
     setSelectOrLibre('pa-gmm', (a&&a.gp?a.gp.gmm:"")||'');
   },120);
-  const btn=document.getElementById('btn-save-animal');
+  var btn=document.getElementById('btn-save-animal');
   if(btn) btn.textContent='💾 Mettre à jour la fiche';
   var delBtn=document.getElementById('btn-delete-animal');
   if(delBtn) delBtn.style.display='inline-flex';
@@ -2035,24 +2037,24 @@ function openAnimalDetail(id){
 }
 
 function populateCertSelect(){
-  const sel=document.getElementById('cert-chiot');if(!sel)return;
+  var sel=document.getElementById('cert-chiot');if(!sel)return;
   sel.innerHTML='<option value="">— Choisir un animal —</option>';
   (state.animaux||[]).forEach(a=>{
-    const o=document.createElement('option');o.value=a.id;o.textContent=a.nom+(a.surnom?' ('+a.surnom+')':'');sel.appendChild(o);
+    var o=document.createElement('option');o.value=a.id;o.textContent=a.nom+(a.surnom?' ('+a.surnom+')':'');sel.appendChild(o);
   });
 }
 
 function genCertificat(){
-  const id=document.getElementById('cert-chiot').value;
+  var id=document.getElementById('cert-chiot').value;
   if(!id){toast('Sélectionnez un animal');return;}
-  const a=(state.animaux||[]).find(x=>x.id===id);if(!a)return;
+  var a=(state.animaux||[]).find(x=>x.id===id);if(!a)return;
 
   // Find siblings from portees
-  const portee=(state.portees||[]).find(p=>(p.chiots||[]).some(c=>c.nom===a.surnom||c.nom===a.nom));
-  const siblings=portee?(portee.chiots||[]).filter(c=>c.id!==id&&(c.nom!==a.nom)):[];
+  var portee=(state.portees||[]).find(p=>(p.chiots||[]).some(c=>c.nom===a.surnom||c.nom===a.nom));
+  var siblings=portee?(portee.chiots||[]).filter(c=>c.id!==id&&(c.nom!==a.nom)):[];
 
-  const preview=document.getElementById('cert-preview');
-  const certDiv=document.getElementById('cert-content');
+  var preview=document.getElementById('cert-preview');
+  var certDiv=document.getElementById('cert-content');
   preview.style.display='block';
 
   certDiv.innerHTML=`
