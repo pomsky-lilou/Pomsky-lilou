@@ -218,7 +218,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.7a.40 — 28 août 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a.42 — 28 août 2026</p>
     </div>
   </div>
 </div>
@@ -227,7 +227,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
 <div id="screen-admin" class="screen">
   <div class="topbar">
     <div class="topbar-brand"><span style="font-size:1.2rem">🌸</span><h2>Pomsky de Lilou</h2></div>
-    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.40</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
+    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.42</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
   </div>
   <nav class="bottom-nav">
     <button class="active" data-panel="tableau"><span class="ni">📊</span>Tableau</button>
@@ -1194,7 +1194,7 @@ function renderPortees(){
       var age=diffDays(p.naissance,t);
       var dispos=(p.chiots||[]).filter(function(c){
         var hasClient=(state.clients||[]).some(function(cl){return cl.chiot===c.id;});
-        return !c.vendu&&!hasClient;
+        return !c.vendu && !hasClient && c.affectation!=='famille';
       }).length;
       var notif=calcNotifPortee(p);
       var nxtVerm=(p.verm||[]).find(function(d){return d>=t;});
