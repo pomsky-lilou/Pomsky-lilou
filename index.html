@@ -10,7 +10,16 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script>
 const firebaseConfig={apiKey:"AIzaSyBhrTrkBQAU7PfkTsvIXJFQVQJEQ5NNlP8",authDomain:"pomsky-lilou.firebaseapp.com",databaseURL:"https://pomsky-lilou-default-rtdb.europe-west1.firebasedatabase.app",projectId:"pomsky-lilou",storageBucket:"pomsky-lilou.firebasestorage.app",messagingSenderId:"404717143128",appId:"1:404717143128:web:5abd1351d79fa0f92db62d"};
-try{firebase.initializeApp(firebaseConfig);const db=firebase.database();window._fb={connected:false,save:function(d){try{db.ref('pomsky').set(JSON.parse(JSON.stringify(d)));}catch(e){}},load:function(cb){db.ref('pomsky').get().then(s=>cb(s.exists()?s.val():null)).catch(()=>cb(null));},listen:function(cb){db.ref('pomsky').on('value',s=>{if(s.exists())cb(s.val());});}};db.ref('.info/connected').on('value',s=>{window._fb.connected=!!s.val();document.querySelectorAll('.sync-dot').forEach(el=>{el.textContent=window._fb.connected?'🟢':'🔴';});});}catch(e){window._fb=null;}
+try{firebase.initializeApp(firebaseConfig);const db=firebase.database();window._fb={connected:false,save:function(d){try{db.ref('pomsky').set(JSON.parse(JSON.stringify(d)));}catch(e){}},load:function(cb){db.ref('pomsky').get().then(s=>cb(s.exists()?s.val():null)).catch(()=>cb(null));},listen:function(cb){db.ref('pomsky').on('value',s=>{if(s.exists())cb(s.val());});}};window._wasConnected=true;
+db.ref('.info/connected').on('value',function(s){
+  var nowConnected=!!s.val();
+  window._fb.connected=nowConnected;
+  document.querySelectorAll('.sync-dot').forEach(function(el){el.textContent=nowConnected?'🟢':'🔴';});
+  if(nowConnected && !window._wasConnected){
+    if(window.onFirebaseReconnect)window.onFirebaseReconnect();
+  }
+  window._wasConnected=nowConnected;
+});}catch(e){window._fb=null;}
 </script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
@@ -218,7 +227,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.7a.44 — 28 août 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a-ADM.45 — 29 août 2026</p>
     </div>
   </div>
 </div>
@@ -227,7 +236,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
 <div id="screen-admin" class="screen">
   <div class="topbar">
     <div class="topbar-brand"><span style="font-size:1.2rem">🌸</span><h2>Pomsky de Lilou</h2></div>
-    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.44</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
+    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a-ADM.45</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
   </div>
   <nav class="bottom-nav">
     <button class="active" data-panel="tableau"><span class="ni">📊</span>Tableau</button>
@@ -759,10 +768,40 @@ function startSync(){
   });
   // Auto-save to Firebase every 30 seconds
   setInterval(function(){
-    if(state.currentUser && window._fb && window._fb.connected){
+    if(state.currentUser && window._fb && window._fb.connected && !window._resyncing){
       window._fb.save(JSON.parse(JSON.stringify(state)));
     }
   }, 30000);
+  // Also resync if the app comes back to the foreground (Safari can suspend
+  // a tab on weak wifi, and the connectivity flag alone doesn't catch that)
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState==='visible' && window._fb && window._fb.connected){
+      onFirebaseReconnect();
+    }
+  });
+}
+
+// Called when Firebase reports we're back online after a drop, or when the
+// tab comes back to the foreground. Reloads the authoritative remote data
+// first (so we don't overwrite anything written elsewhere while we were
+// offline), THEN pushes any edit made locally while disconnected.
+function onFirebaseReconnect(){
+  if(!window._fb || window._resyncing)return;
+  window._resyncing=true;
+  if(typeof toast==='function')toast('🔄 Reconnexion — synchronisation...');
+  window._fb.load(function(d){
+    if(d){
+      mergeState(d);
+      try{localStorage.setItem('pomsky_v2',JSON.stringify(d));}catch(e){}
+      if(state.currentUser){renderAll();updateNavBadges();}
+    }
+    if(window._pendingSave){
+      window._fb.save(window._pendingSave);
+      window._pendingSave=null;
+    }
+    window._resyncing=false;
+    if(typeof toast==='function')toast('✅ Synchronisé');
+  });
 }
 
 // ══════ UTILS ══════
