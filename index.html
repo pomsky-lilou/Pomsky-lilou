@@ -227,7 +227,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.7a-ADM.45 — 29 août 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a-ADM.46 — 29 août 2026</p>
     </div>
   </div>
 </div>
@@ -236,7 +236,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
 <div id="screen-admin" class="screen">
   <div class="topbar">
     <div class="topbar-brand"><span style="font-size:1.2rem">🌸</span><h2>Pomsky de Lilou</h2></div>
-    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a-ADM.45</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
+    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a-ADM.46</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
   </div>
   <nav class="bottom-nav">
     <button class="active" data-panel="tableau"><span class="ni">📊</span>Tableau</button>
@@ -1674,7 +1674,7 @@ function openClientModal(id){
   document.getElementById('mc-title').textContent=c.prenom+' '+c.nom;
   var ph=(c.paiements||[]).map((p,i)=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:.38rem .5rem;border-bottom:1px solid var(--border);font-size:.82rem"><span>${p.label} — ${p.montant}€</span>${p.recu?`<span class="badge badge-ok">✓ ${p.date}</span>`:`<button class="btn btn-ok btn-sm" onclick="markPay('${id}',${i})">Reçu</button>`}</div>`).join('');
   window._currentClientId = id;
-  document.getElementById('mc-content').innerHTML=`<div style="font-size:.82rem;display:flex;flex-direction:column;gap:.28rem;margin-bottom:.7rem">${c.tel?`<div>📞 ${c.tel}</div>`:''} ${c.email?`<div>📧 ${c.email}</div>`:''} ${c.visite?`<div>👤 Visite : ${fmtShort(c.visite)}</div>`:''} ${c.depart?`<div>✈️ Départ : ${fmtShort(c.depart)}</div>`:''} ${c.notes?`<div>📝 ${c.notes}</div>`:''}</div>
+  document.getElementById('mc-content').innerHTML=`<div style="font-size:.82rem;display:flex;flex-direction:column;gap:.28rem;margin-bottom:.7rem">${c.tel?`<div>📞 ${c.tel}</div>`:''} ${c.email?`<div>📧 ${c.email}</div>`:''} ${c.visite?`<div style="display:flex;align-items:center;gap:.5rem">👤 Visite : ${fmtShort(c.visite)} <button class="btn btn-info btn-sm" onclick="addToCalendar('${id}','visite')">📅 Ajouter au calendrier</button></div>`:''} ${c.depart?`<div style="display:flex;align-items:center;gap:.5rem">✈️ Départ : ${fmtShort(c.depart)} <button class="btn btn-info btn-sm" onclick="addToCalendar('${id}','depart')">📅 Ajouter au calendrier</button></div>`:''} ${c.notes?`<div>📝 ${c.notes}</div>`:''}</div>
   <h3 style="margin-bottom:.35rem">Paiements (${c.prix}€)</h3>
   <div style="border:1.5px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:.7rem">${ph}</div>
   <h3 style="margin-bottom:.35rem">Caution stérilisation (${(c.chequeSteril?c.chequeSteril.montant:0)||0}€)</h3>
@@ -1683,6 +1683,32 @@ function openClientModal(id){
     ${(c.chequeSteril?c.chequeSteril.rendu:false)?'<span class="badge badge-ok">✓ Rendu/détruit</span>':`<button class="btn btn-info btn-sm" onclick="markSterilRendu('${id}')">Rendu/détruit</button>`}
   </div>`;
   openM('modal-client');
+}
+
+// ══════ CALENDRIER iOS (.ics) ══════
+function icsPad(x){x=''+x;return x.length<2?'0'+x:x;}
+function icsNow(){var n=new Date();return n.getUTCFullYear()+icsPad(n.getUTCMonth()+1)+icsPad(n.getUTCDate())+'T'+icsPad(n.getUTCHours())+icsPad(n.getUTCMinutes())+icsPad(n.getUTCSeconds())+'Z';}
+function icsEscape(s){return (s||'').replace(/\\/g,'\\\\').replace(/,/g,'\\,').replace(/;/g,'\\;').replace(/\n/g,'\\n');}
+function addToCalendar(clientId,kind){
+  var c=(state.clients||[]).find(function(x){return x.id===clientId;});
+  if(!c){toast('Fiche introuvable');return;}
+  var dateStr=kind==='visite'?c.visite:c.depart;
+  if(!dateStr){toast('Aucune date renseignée');return;}
+  var title=kind==='visite'?('👤 Visite '+c.prenom+' '+c.nom):('✈️ Départ '+c.prenom+' '+c.nom);
+  var descParts=[];
+  if(c.tel)descParts.push('Tél: '+c.tel);
+  if(c.chiot)descParts.push('Chiot: '+c.chiot);
+  var desc=descParts.join(' — ');
+  var startYMD=dateStr.replace(/-/g,'');
+  var p=dateStr.split('-');
+  var dt=new Date(parseInt(p[0],10),parseInt(p[1],10)-1,parseInt(p[2],10));
+  dt.setDate(dt.getDate()+1);
+  var endYMD=dt.getFullYear()+icsPad(dt.getMonth()+1)+icsPad(dt.getDate());
+  var uid='pomsky-'+kind+'-'+clientId+'@pomsky-lilou';
+  var ics=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Pomsky de Lilou//FR','CALSCALE:GREGORIAN','BEGIN:VEVENT',
+    'UID:'+uid,'DTSTAMP:'+icsNow(),'DTSTART;VALUE=DATE:'+startYMD,'DTEND;VALUE=DATE:'+endYMD,
+    'SUMMARY:'+icsEscape(title),'DESCRIPTION:'+icsEscape(desc),'END:VEVENT','END:VCALENDAR'].join('\r\n');
+  window.location.href='data:text/calendar;charset=utf8,'+encodeURIComponent(ics);
 }
 function markPay(cid,idx){const c=(state.clients||[]).find(x=>x.id===cid);if(!c)return;c.paiements[idx].recu=true;c.paiements[idx].date=fmtShort(today());saveState();openClientModal(cid);renderCRM();toast('💶 Paiement enregistré');}
 function markSterilRecu(cid){const c=(state.clients||[]).find(x=>x.id===cid);if(c&&c.chequeSteril){c.chequeSteril.recu=true;saveState();openClientModal(cid);toast('✅ Chèque reçu');}}
