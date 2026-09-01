@@ -227,7 +227,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.7a-ADM.46 — 29 août 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a-ADM.47 — 1 sept 2026</p>
     </div>
   </div>
 </div>
@@ -236,7 +236,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
 <div id="screen-admin" class="screen">
   <div class="topbar">
     <div class="topbar-brand"><span style="font-size:1.2rem">🌸</span><h2>Pomsky de Lilou</h2></div>
-    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a-ADM.46</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
+    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a-ADM.47</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
   </div>
   <nav class="bottom-nav">
     <button class="active" data-panel="tableau"><span class="ni">📊</span>Tableau</button>
@@ -1708,7 +1708,16 @@ function addToCalendar(clientId,kind){
   var ics=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Pomsky de Lilou//FR','CALSCALE:GREGORIAN','BEGIN:VEVENT',
     'UID:'+uid,'DTSTAMP:'+icsNow(),'DTSTART;VALUE=DATE:'+startYMD,'DTEND;VALUE=DATE:'+endYMD,
     'SUMMARY:'+icsEscape(title),'DESCRIPTION:'+icsEscape(desc),'END:VEVENT','END:VCALENDAR'].join('\r\n');
-  window.location.href='data:text/calendar;charset=utf8,'+encodeURIComponent(ics);
+  var blob=new Blob([ics],{type:'text/calendar;charset=utf-8'});
+  var blobUrl=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=blobUrl;
+  a.download=(kind==='visite'?'visite-':'depart-')+c.prenom+'.ics';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function(){URL.revokeObjectURL(blobUrl);},4000);
+  toast('📅 Événement téléchargé — ouvrez-le pour l\'ajouter à Calendrier');
 }
 function markPay(cid,idx){const c=(state.clients||[]).find(x=>x.id===cid);if(!c)return;c.paiements[idx].recu=true;c.paiements[idx].date=fmtShort(today());saveState();openClientModal(cid);renderCRM();toast('💶 Paiement enregistré');}
 function markSterilRecu(cid){const c=(state.clients||[]).find(x=>x.id===cid);if(c&&c.chequeSteril){c.chequeSteril.recu=true;saveState();openClientModal(cid);toast('✅ Chèque reçu');}}
