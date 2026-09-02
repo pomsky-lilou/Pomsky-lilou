@@ -227,7 +227,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.7a-ADM.47 — 1 sept 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a-ADM.48 — 1 sept 2026</p>
     </div>
   </div>
 </div>
@@ -236,7 +236,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
 <div id="screen-admin" class="screen">
   <div class="topbar">
     <div class="topbar-brand"><span style="font-size:1.2rem">🌸</span><h2>Pomsky de Lilou</h2></div>
-    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a-ADM.47</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
+    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a-ADM.48</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
   </div>
   <nav class="bottom-nav">
     <button class="active" data-panel="tableau"><span class="ni">📊</span>Tableau</button>
@@ -698,6 +698,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
   <div class="modal"><h2 id="mc-title">Dossier client</h2><div id="mc-content"></div>
     <div class="modal-actions">
       <button class="btn btn-info btn-sm" onclick="generateContrat(window._currentClientId)">📄 Contrat imprimable</button>
+      <button class="btn btn-sm" style="background:#2b579a;color:white" onclick="generateContratWord(window._currentClientId)">📝 Contrat Word</button>
       <button class="btn btn-sm" style="background:var(--amber);color:white" onclick="generateCertifFromFamille(window._currentClientId)">🏆 Pedigree</button>
       <button class="btn btn-danger btn-sm" id="btn-del-client">🗑️ Supprimer</button>
       <button class="btn btn-secondary btn-sm" data-close="modal-client">Fermer</button>
@@ -2478,6 +2479,156 @@ function generateContrat(clientId){
   var w=window.open('','_blank');
   if(w){w.document.write(html);w.document.close();}
   else toast('Autorisez les popups pour ce site');
+}
+
+// ══════ CONTRAT WORD (.rtf) ══════
+function rtfEsc(s){
+  s=(s===undefined||s===null)?'':String(s);
+  var out='';
+  for(var i=0;i<s.length;i++){
+    var ch=s.charAt(i);
+    var code=s.charCodeAt(i);
+    if(ch==='\\'||ch==='{'||ch==='}'){out+='\\'+ch;}
+    else if(code>126){var v=code>32767?code-65536:code;out+='\\u'+v+'?';}
+    else{out+=ch;}
+  }
+  return out;
+}
+function rtfPar(text,bold,center){
+  var s='\\pard';
+  if(center)s+='\\qc';
+  s+=' ';
+  if(bold)s+='{\\b '+rtfEsc(text)+'}';
+  else s+=rtfEsc(text);
+  s+='\\par\n';
+  return s;
+}
+function rtfHeading(text){return '\\pard\\sb220\\sa60 {\\b\\fs22 '+rtfEsc(text)+'}\\par\n';}
+function rtfBullet(text){return '\\pard\\li360\\fi-200 {\\bullet}\\tab '+rtfEsc(text)+'\\par\n';}
+function rtfRow2(label,value){
+  return '\\trowd\\trgaph80\\trleft0'
+    +'\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx3600'
+    +'\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx9500'
+    +'\\pard\\intbl {\\b '+rtfEsc(label)+'}\\cell '+rtfEsc(value)+'\\cell\\row\n';
+}
+function rtfRow3(a,b,c,header){
+  var o1=header?'{\\b ':'{';var o2='}';
+  return '\\trowd\\trgaph80\\trleft0'
+    +'\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx3500'
+    +'\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx6300'
+    +'\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx9500'
+    +'\\pard\\intbl '+o1+rtfEsc(a)+o2+'\\cell '+o1+rtfEsc(b)+o2+'\\cell '+o1+rtfEsc(c)+o2+'\\cell\\row\n';
+}
+function generateContratWord(clientId){
+  var c=(state.clients||[]).find(function(x){return x.id===clientId;});
+  if(!c){toast('Client introuvable');return;}
+  var chiot=null;var portee=null;
+  (state.portees||[]).forEach(function(p){(p.chiots||[]).forEach(function(ch){if(ch.id===c.chiot){chiot=ch;portee=p;}});});
+  var nomChiot=chiot?(chiot.nomClient||chiot.codeProvisoire):'...';
+  var nomDef=nomChiot+" de L'Or\u00e9e des Moonskys";
+  var dateAuj=new Date().toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
+  var sexeTxt=chiot?(chiot.sexe==='M'?'m\u00e2le':'femelle'):'non pr\u00e9cis\u00e9';
+  var robe=chiot?(chiot.robe||'non pr\u00e9cis\u00e9'):'non pr\u00e9cis\u00e9';
+  var mere=portee?(portee.femelle+" de L'Or\u00e9e des Moonskys"):'non pr\u00e9cis\u00e9';
+  var pere=portee?portee.male:'non pr\u00e9cis\u00e9';
+  var naiss=portee?fmtShort(portee.naissance):'non pr\u00e9cis\u00e9';
+  var puce=chiot?(chiot.puce||'en attente'):'en attente';
+  var prix=c.prix||0;
+
+  var rtf='{\\rtf1\\ansi\\ansicpg1252\\deff0\\deflang1036{\\fonttbl{\\f0\\froman Georgia;}}\n\\viewkind4\\uc1\\pard\\f0\\fs20\n';
+
+  rtf+=rtfPar("L'Or\u00e9e des Moonskys",true,true);
+  rtf+=rtfPar("46 chemin du Ribarot, 31700 Daux \u2014 \u00c9levage de Pomsky \u0153uvrant \u00e0 la reconnaissance de cette nouvelle race",false,true);
+  rtf+='\\pard\\sb200\\sa60\\qc {\\b\\fs24 CONTRAT DE VENTE D\'UN CHIOT/CHIEN DE TYPE POMSKY}\\par\n';
+  rtf+='\\pard\\sa220\\qc {\\i valant attestation de cession (chien destin\u00e9 \u00e0 la compagnie)}\\par\n';
+
+  rtf+=rtfHeading('LE VENDEUR');
+  rtf+=rtfPar('Madame DELBOUIS Laurence');
+  rtf+=rtfPar('46 chemin du Ribarot, 31700 DAUX');
+  rtf+=rtfPar('T\u00e9l : 06-08-84-75-89 \u2014 laurencebabb@gmail.com');
+  rtf+=rtfPar('SIRET : 82194514400011');
+
+  rtf+=rtfHeading("L'ACQU\u00c9REUR");
+  rtf+=rtfPar((c.prenom||'')+' '+(c.nom||''),true);
+  rtf+=rtfPar(c.adresse||'\u2014');
+  rtf+=rtfPar('T\u00e9l : '+(c.tel||'\u2014')+' \u2014 '+(c.email||'\u2014'));
+  rtf+=rtfPar('ci-apr\u00e8s d\u00e9nomm\u00e9 \u00ab l\'acqu\u00e9reur \u00bb, qui se d\u00e9clare en qualit\u00e9 de consommateur ou non-professionnel.');
+
+  rtf+=rtfHeading('Art. 1 \u2014 Cession & Livraison');
+  rtf+=rtfPar('Par les pr\u00e9sentes, le vendeur c\u00e8de et livre ce jour le '+dateAuj+' \u00e0 Daux (31) :');
+  rtf+=rtfRow2('Date de cession',dateAuj+' \u00e0 Daux (31)');
+  rtf+=rtfRow2('Race','Pomsky');
+  rtf+=rtfRow2('Date de naissance',naiss);
+  rtf+=rtfRow2('Sexe',sexeTxt);
+  rtf+=rtfRow2('Robe',robe);
+  rtf+=rtfRow2('Nom',nomDef);
+  rtf+=rtfRow2('Puce \u00e9lectronique',puce);
+  rtf+=rtfRow2('M\u00e8re',mere);
+  rtf+=rtfRow2('P\u00e8re',pere);
+  rtf+='\\pard\\sb120 \n';
+  rtf+=rtfPar("L'Acqu\u00e9reur s'engage \u00e0 d\u00e9tenir l'animal dans des conditions compatibles avec ses besoins biologiques et comportementaux et \u00e0 lui donner des soins attentifs conform\u00e9ment aux articles L.214-1 \u00e0 L.214-3 du Code rural et de la p\u00eache maritime.");
+
+  rtf+=rtfHeading('Art. 2 \u2014 Destination du chiot');
+  rtf+=rtfPar("Le chiot est c\u00e9d\u00e9 \u00e0 titre d'animal de compagnie et est, de convention expresse entre les parties, destin\u00e9 exclusivement \u00e0 cet usage. Il s'agit d'une condition d\u00e9terminante du consentement du vendeur, sans laquelle il n'aurait pas contract\u00e9.");
+  rtf+=rtfPar('\u00a8 Option cession \u00e0 l\'\u00e9tat st\u00e9rilis\u00e9 : le chien c\u00e9d\u00e9 est d\u00e9j\u00e0 st\u00e9rilis\u00e9.');
+  rtf+=rtfPar("X Option obligation de st\u00e9rilisation : L'acheteur devra faire st\u00e9riliser le chiot \u00e0 partir de l'\u00e2ge de 6 mois et avant celui de 12 mois et en justifier au vendeur par un certificat v\u00e9t\u00e9rinaire, sous peine de perdre la ristourne pr\u00e9vue \u00e0 l'article 4. Sous la m\u00eame peine, il ne pourra c\u00e9der \u00e0 un tiers l'animal avant qu'il ne soit st\u00e9rilis\u00e9.");
+
+  rtf+=rtfHeading('Art. 3 \u2014 Garantie');
+  rtf+=rtfPar('La pr\u00e9sente vente est soumise uniquement \u00e0 la garantie des vices r\u00e9dhibitoires pr\u00e9vue aux articles L. 213-1 et suivants du Code Rural et de la P\u00eache Maritime, \u00e0 l\'exclusion de la garantie des vices cach\u00e9s de droit commun \u00e9dict\u00e9e \u00e0 l\'article 1641 du code civil.');
+  rtf+=rtfPar("Il appartient \u00e0 l'acheteur de prendre certaines pr\u00e9cautions au cours de la croissance du chiot jusqu'\u00e0 12 mois afin de ne pas cr\u00e9er des facteurs favorisant l'apparition d'affections orthop\u00e9diques :");
+  rtf+=rtfBullet("Pas de longues promenades (sorties de 10 \u00e0 15 minutes jusqu'\u00e0 6 mois, une heure par semaine entre 6 et 12 mois)");
+  rtf+=rtfBullet('\u00c9viter de faire galoper le chiot (le trot est plus conseill\u00e9)');
+  rtf+=rtfBullet("Pas de saut, \u00e9viter les mont\u00e9es ou descentes d'escaliers");
+  rtf+=rtfBullet('\u00c9viter le surpoids \u2014 nourrir exclusivement avec des aliments PREMIUM (PRO PLAN PUPPY ou ROYAL CANIN MEDIUM PUPPY)');
+  rtf+=rtfBullet('Pas de grignotage ou de nourriture \u00e0 volont\u00e9');
+  if(chiot&&chiot.sexe==='M'){
+    rtf+=rtfPar("S'il acqu\u00e9rit un chiot m\u00e2le, l'acheteur reconna\u00eet avoir \u00e9t\u00e9 inform\u00e9 qu'en d\u00e9pit d'une descente normale dans le scrotum aux alentours de 6 semaines, les testicules peuvent remonter jusqu'\u00e0 l'\u00e2ge de six mois. L'acqu\u00e9reur d\u00e9clare renoncer \u00e0 toute r\u00e9clamation, recours ou action, en cas d'ectopie testiculaire.");
+  }
+
+  rtf+=rtfHeading('Art. 4 \u2014 Prix');
+  rtf+=rtfPar("Afin d'\u00e9viter que ses chiens ne se retrouvent impliqu\u00e9s dans des mariages inopportuns, proscrits, ou susceptibles de g\u00e9n\u00e9rer des sujets de mauvaise qualit\u00e9, ce qui nuirait \u00e0 la r\u00e9putation de son \u00e9levage et \u00e0 la lign\u00e9e cr\u00e9\u00e9s par le vendeur, il est d\u00e9terminant du consentement de ce dernier, sans quoi il n'aurait pas contract\u00e9, que le chiot c\u00e9d\u00e9 par les pr\u00e9sentes soit exclusivement destin\u00e9 \u00e0 la compagnie, m\u00eame si l'option st\u00e9rilisation n'a pas \u00e9t\u00e9 coch\u00e9e, ce \u00e0 quoi s'oblige l'acqu\u00e9reur, en contrepartie d'une ristourne de deux mille euros, 2\u00a0000\u20ac (ch\u00e8que de ristourne en attente et non encaiss\u00e9), sur le prix de vente fix\u00e9 \u00e0 "+(prix+2000)+'\u20ac nt TVA 20%.');
+  rtf+=rtfRow2('Prix de vente total (ch\u00e8que ristourne inclus)',(prix+2000)+'\u20ac');
+  rtf+=rtfRow2('Dont ristourne st\u00e9rilisation (ch\u00e8que non encaiss\u00e9)','2\u00a0000\u20ac');
+  rtf+=rtfRow2('Prix net hors ristourne',prix+'\u20ac');
+  rtf+='\\pard\\sb120 \n';
+  rtf+=rtfPar('Sur pr\u00e9sentation du certificat de st\u00e9rilisation r\u00e9alis\u00e9e dans le d\u00e9lai imparti \u00e0 l\'article 2 des pr\u00e9sentes, le vendeur renverra \u00e0 l\'acheteur la ristourne qui sera acquise de droit.');
+  rtf+=rtfPar("Pass\u00e9 le d\u00e9lai imparti \u00e0 l'article 2, si les termes n'ont pas \u00e9t\u00e9 respect\u00e9s, l'acqu\u00e9reur devra s'acquitter du paiement de la ristourne, soit 2\u00a0000\u20ac.");
+
+  rtf+=rtfHeading('Art. 5 \u2014 Paiement & R\u00e9serve de propri\u00e9t\u00e9');
+  rtf+=rtfPar('Le prix convenu, apr\u00e8s \u00e9ventuelle r\u00e9duction, a \u00e9t\u00e9 pay\u00e9 par '+(c.paiements||[]).length+' versement(s) :');
+  rtf+=rtfRow3('Versement','Montant','Statut',true);
+  (c.paiements||[]).forEach(function(p){
+    rtf+=rtfRow3(p.label,p.montant+'\u20ac',p.recu?('\u2713 Re\u00e7u le '+p.date):'En attente');
+  });
+  rtf+='\\pard\\sb120 \n';
+  rtf+=rtfPar('La pr\u00e9sente vente est soumise \u00e0 une clause de r\u00e9serve de propri\u00e9t\u00e9. Le chien reste la propri\u00e9t\u00e9 du vendeur jusqu\'\u00e0 paiement int\u00e9gral et effectif du prix convenu. Chaque jour de retard g\u00e9n\u00e8re un int\u00e9r\u00eat journalier de dix euros (10\u20ac).');
+
+  rtf+=rtfHeading('Art. 6 \u2014 Documents remis');
+  rtf+=rtfPar("L'acqu\u00e9reur soussign\u00e9 reconna\u00eet avoir re\u00e7u ce jour :");
+  rtf+=rtfPar('Attestation de cession \u2022 Document d\'information sur les caract\u00e9ristiques de l\'animal \u2022 Certificat I-CAD \u2022 Carnet ou passeport EU de vaccination \u2022 Certificat v\u00e9t\u00e9rinaire avant cession');
+
+  rtf+=rtfHeading('Art. 7 \u2014 M\u00e9diation');
+  rtf+=rtfPar('Le vendeur rel\u00e8ve du m\u00e9diateur de la consommation, Monsieur Yves LEGEAY, demeurant 22 Boulevard A. Millerand, 44000 Nantes.');
+
+  rtf+=rtfHeading('Art. 8 \u2014 Nationalit\u00e9 du contrat');
+  rtf+=rtfPar('Le pr\u00e9sent contrat est de droit fran\u00e7ais exclusivement et rel\u00e8vera des juridictions fran\u00e7aises uniquement.');
+
+  rtf+='\\pard\\sb300\\sa300\\qc {\\i Fait \u00e0 DAUX, le '+rtfEsc(dateAuj)+', en deux exemplaires.}\\par\n';
+  rtf+=rtfRow2('Le vendeur','Laurence DELBOUIS');
+  rtf+=rtfRow2("L'acqu\u00e9reur",(c.prenom||'')+' '+(c.nom||''));
+  rtf+='\\pard\\sb300\\qc\\fs16 {\\i \u00c9levage de Pomsky \u0153uvrant \u00e0 la reconnaissance de cette nouvelle race \u2014 L\'Or\u00e9e des Moonskys \u2014 46 chemin du Ribarot 31700 Daux}\\par\n';
+  rtf+='}';
+
+  var blob=new Blob([rtf],{type:'application/rtf'});
+  var blobUrl=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=blobUrl;
+  a.download='Contrat-'+(c.prenom||'client')+'-'+(c.nom||'')+'.rtf';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function(){URL.revokeObjectURL(blobUrl);},4000);
+  toast('📝 Contrat Word téléchargé — ouvrez-le pour le personnaliser');
 }
 
 function generateCertifFromFamille(clientId){
