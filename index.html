@@ -228,7 +228,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.7a.59 — 05 oct 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a.60 — 05 oct 2026</p>
     </div>
   </div>
 </div>
@@ -822,7 +822,7 @@ function getSeason(ds){const m=new Date(ds).getMonth()+1;if([3,4,5].includes(m))
 function isolJours(ds){const s=getSeason(ds);return(s==='printemps'||s==='automne')?15:21;}
 function toast(msg,dur=2500){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),dur);}
 function openM(id){document.getElementById(id).classList.add('open');}
-function closeM(id){document.getElementById(id).classList.remove('open');}
+function closeM(id){var el=document.getElementById(id);if(el){el.classList.remove('open');el.classList.remove('active');}}
 function showScreen(n){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('screen-'+n).classList.add('active');}
 function switchPanel(n){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
@@ -1922,13 +1922,28 @@ function _doParsePdfJs(arrayBuffer,filename){
 // Parser le texte ligne par ligne — format Caisse d'Épargne Pro
 // Pattern: DD/MM/YYYY   DD/MM/YYYY   LIBELLÉ...   - montant,xx
 function _parseTextLines(lines,filename){
+  // DEBUG — afficher les 30 premières lignes pour voir ce que PDF.js produit
+  console.log('[releve] _parseTextLines — total lignes:', lines.length);
+  for(var d=0;d<Math.min(30,lines.length);d++) console.log('[releve] ligne['+d+']:', JSON.stringify(lines[d]));
   var allOps=[];
-  // Regex : date opération, date valeur (optionnelle), libellé, signe+montant
-  // Le montant peut contenir des espaces : "1 200,00"
-  var re=/(\d{2}\/\d{2}\/\d{4})\s+\d{2}\/\d{2}\/\d{4}\s+(.+?)\s+([-+])\s*([\d\s]+,\d{2})\s*$/;
+  // Plusieurs regex pour couvrir les formats PDF.js possibles
+  // Format 1 : "DD/MM/YYYY DD/MM/YYYY LIBELLÉ - 1 200,00"  (signe séparé)
+  // Format 2 : "DD/MM/YYYY DD/MM/YYYY LIBELLÉ -1200,00"    (signe collé)
+  // Format 3 : "DD/MM/YYYY LIBELLÉ - 1 200,00"             (date valeur absente)
+  var re1=/(\d{2}\/\d{2}\/\d{4})\s+\d{2}\/\d{2}\/\d{4}\s+(.+?)\s+([-+])\s*([\d\s]+,\d{2})\s*$/;
+  var re2=/(\d{2}\/\d{2}\/\d{4})\s+\d{2}\/\d{2}\/\d{4}\s+(.+?)\s+([-+])([\d\s]+,\d{2})\s*$/;
+  var re3=/(\d{2}\/\d{2}\/\d{4})\s+(.+?)\s+([-+])\s*([\d\s]+,\d{2})\s*$/;
+  var matched=0;
   lines.forEach(function(line){
-    var m=line.match(re);
-    if(!m) return;
+    var m=line.match(re1)||line.match(re2)||line.match(re3);
+    if(!m){
+      // Essayer aussi format sans signe séparé : montant négatif "-1200,00"
+      var re4=/(\d{2}\/\d{2}\/\d{4})\s+(?:\d{2}\/\d{2}\/\d{4}\s+)?(.+?)\s+(-[\d\s]+,\d{2})\s*$/;
+      var m4=line.match(re4);
+      if(m4){
+        m=[m4[0],m4[1],m4[2],'-',m4[3].replace(/^-/,'')];
+      } else return;
+    }
     var dateStr=m[1];
     var libelle=m[2].replace(/\s+/g,' ').trim();
     var signe=m[3];
@@ -1936,6 +1951,7 @@ function _parseTextLines(lines,filename){
     if(signe!=='-') return; // on ne garde que les débits
     var montant=parseFloat(montantStr.replace(',','.'));
     if(isNaN(montant)||montant<=0) return;
+    matched++;
     // Filtrer les frais de virement < 1€ (FRAIS VIR, COMMISSIONS minimes)
     // On garde tout pour que l'utilisateur choisisse
     allOps.push({
@@ -1946,8 +1962,9 @@ function _parseTextLines(lines,filename){
       dup:_isDuplicate(dateStr,montant,libelle)
     });
   });
+  console.log('[releve] parsing terminé — lignes matchées:', matched, '— ops trouvées:', allOps.length);
   if(!allOps.length){
-    _showReleveError('Aucune opération de débit trouvée.\nVérifiez que c\'est bien un relevé Caisse d\'Épargne Pro (compte courant).');
+    _showReleveError('Aucune opération de débit trouvée ('+lines.length+' lignes lues).\nVérifiez la console pour voir les lignes extraites.');
   } else {
     window._releveLignes=allOps;
     _afficherModalReleve(allOps,filename);
