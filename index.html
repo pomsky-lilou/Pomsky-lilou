@@ -228,7 +228,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.7a.62 — 05 oct 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a.63 — 05 oct 2026</p>
     </div>
   </div>
 </div>
@@ -1934,24 +1934,24 @@ function _parseTextLines(lines,filename){
   console.log('[releve] _parseTextLines — total lignes:', lines.length);
   for(var d=0;d<Math.min(80,lines.length);d++) console.log('[releve] L'+d+':', JSON.stringify(lines[d]));
   var allOps=[];
-  // Plusieurs regex pour couvrir les formats PDF.js possibles
-  // Format 1 : "DD/MM/YYYY DD/MM/YYYY LIBELLÉ - 1 200,00"  (signe séparé)
-  // Format 2 : "DD/MM/YYYY DD/MM/YYYY LIBELLÉ -1200,00"    (signe collé)
-  // Format 3 : "DD/MM/YYYY LIBELLÉ - 1 200,00"             (date valeur absente)
-  var re1=/(\d{2}\/\d{2}\/\d{4})\s+\d{2}\/\d{2}\/\d{4}\s+(.+?)\s+([-+])\s*([\d\s]+,\d{2})\s*$/;
-  var re2=/(\d{2}\/\d{2}\/\d{4})\s+\d{2}\/\d{2}\/\d{4}\s+(.+?)\s+([-+])([\d\s]+,\d{2})\s*$/;
-  var re3=/(\d{2}\/\d{2}\/\d{4})\s+(.+?)\s+([-+])\s*([\d\s]+,\d{2})\s*$/;
+  // PDF.js reconstruit les dates avec espaces : "25 / 07 / 20 26" → normaliser d'abord
+  // Normalisation : "DD / MM / YYYY" ou "DD / MM / YY YY" → "DD/MM/YYYY"
+  function normaliseLigne(l){
+    // Coller les fragments de date : "25 / 07 / 20 26" → "25/07/2026"
+    // Pattern : chiffres, espaces optionnels, slash, espaces optionnels, chiffres
+    return l.replace(/(\d{1,2})\s*\/\s*(\d{1,2})\s*\/\s*(\d{2})\s*(\d{2})/g,function(_,d,mo,y1,y2){
+      return (d.length<2?'0'+d:d)+'/'+(mo.length<2?'0'+mo:mo)+'/'+y1+y2;
+    }).replace(/(\d{1,2})\s*\/\s*(\d{1,2})\s*\/\s*(\d{4})/g,function(_,d,mo,y){
+      return (d.length<2?'0'+d:d)+'/'+(mo.length<2?'0'+mo:mo)+'/'+y;
+    });
+  }
+  var re=/(\d{2}\/\d{2}\/\d{4})\s+\d{2}\/\d{2}\/\d{4}\s+(.+?)\s+([-+])\s*([\d\s]+,\d{2})\s*$/;
+  var re2=/(\d{2}\/\d{2}\/\d{4})\s+(.+?)\s+([-+])\s*([\d\s]+,\d{2})\s*$/;
   var matched=0;
-  lines.forEach(function(line){
-    var m=line.match(re1)||line.match(re2)||line.match(re3);
-    if(!m){
-      // Essayer aussi format sans signe séparé : montant négatif "-1200,00"
-      var re4=/(\d{2}\/\d{2}\/\d{4})\s+(?:\d{2}\/\d{2}\/\d{4}\s+)?(.+?)\s+(-[\d\s]+,\d{2})\s*$/;
-      var m4=line.match(re4);
-      if(m4){
-        m=[m4[0],m4[1],m4[2],'-',m4[3].replace(/^-/,'')];
-      } else return;
-    }
+  lines.forEach(function(rawLine){
+    var line=normaliseLigne(rawLine);
+    var m=line.match(re)||line.match(re2);
+    if(!m) return;
     var dateStr=m[1];
     var libelle=m[2].replace(/\s+/g,' ').trim();
     var signe=m[3];
