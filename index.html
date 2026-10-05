@@ -16,7 +16,8 @@ try{firebase.initializeApp(firebaseConfig);const db=firebase.database();window._
 @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
 :root{--forest:#1a3a2a;--moss:#2d5a3d;--sage:#7aab8a;--cream:#f5f0e8;--parchment:#ede6d4;--amber:#c8860a;--alert:#c0392b;--ok:#27ae60;--warn:#e67e22;--info:#2980b9;--purple:#6c3483;--text:#1c2b22;--muted:#6b8070;--border:#d4cdb8;--white:#fff;--shadow:0 2px 12px rgba(26,58,42,.10);--radius:12px;--radius-sm:8px;}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--text);min-height:100vh}
+body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--text);min-height:100vh;overscroll-behavior-y:none;}
+html{overscroll-behavior-y:none;}
 h1,h2,h3{font-family:'DM Serif Display',serif}
 h1{font-size:clamp(1.4rem,4vw,2rem);color:var(--forest)}
 h2{font-size:1.05rem;color:var(--moss)}
@@ -226,7 +227,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.7a.51 — 05 oct 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a.52 — 05 oct 2026</p>
     </div>
   </div>
 </div>
@@ -235,7 +236,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
 <div id="screen-admin" class="screen">
   <div class="topbar">
     <div class="topbar-brand"><span style="font-size:1.2rem">🌸</span><h2>Pomsky de Lilou</h2></div>
-    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.51</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
+    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.52</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
   </div>
   <nav class="bottom-nav">
     <button class="active" data-panel="tableau"><span class="ni">📊</span>Tableau</button>
@@ -3097,6 +3098,18 @@ function cancelAnimalEdit(){
 
 // ══════ INIT ══════
 (function init(){
+  // Bloquer le pull-to-refresh Safari (qui recharge la page GitHub)
+  document.addEventListener('touchmove', function(e){
+    if(e.touches.length===1){
+      var el=e.target;
+      var scrollable=false;
+      while(el&&el!==document.body){
+        if(el.scrollHeight>el.clientHeight&&['auto','scroll'].indexOf(window.getComputedStyle(el).overflowY)>-1){scrollable=true;break;}
+        el=el.parentElement;
+      }
+      if(!scrollable) e.preventDefault();
+    }
+  },{passive:false});
   loadState();
   document.getElementById('btn-login').addEventListener('click',doLogin);
   document.getElementById('login-pin').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
