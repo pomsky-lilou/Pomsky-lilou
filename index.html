@@ -228,7 +228,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.7a.60 — 05 oct 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a.62 — 05 oct 2026</p>
     </div>
   </div>
 </div>
@@ -1883,38 +1883,46 @@ function _doParsePdfJs(arrayBuffer,filename){
     loadingTask.promise.then(function(pdf){
       var allLines=[];
       var total=pdf.numPages;
-      var done=0;
-      for(var p=1;p<=total;p++){
-        (function(pageNum){
-          pdf.getPage(pageNum).then(function(page){
-            page.getTextContent().then(function(tc){
-              // Grouper les items par Y (±5pt) puis trier par X → reconstituer chaque ligne de texte
-              var rows=[];
-              tc.items.forEach(function(item){
-                if(!item.str) return;
-                var y=Math.round(item.transform[5]);
-                var x=item.transform[4];
-                var found=false;
-                for(var r=0;r<rows.length;r++){
-                  if(Math.abs(rows[r].y-y)<5){rows[r].items.push({x:x,s:item.str});found=true;break;}
-                }
-                if(!found) rows.push({y:y,items:[{x:x,s:item.str}]});
-              });
-              // Trier les lignes de haut en bas (Y décroissant en PDF)
-              rows.sort(function(a,b){return b.y-a.y;});
-              rows.forEach(function(row){
-                row.items.sort(function(a,b){return a.x-b.x;});
-                var line=row.items.map(function(it){return it.s;}).join(' ').replace(/\s+/g,' ').trim();
-                if(line) allLines.push(line);
-              });
-              done++;
-              if(done===total){
-                _parseTextLines(allLines,filename);
+      console.log('[releve] PDF chargé —', total, 'pages');
+      // Lecture séquentielle page par page (évite race condition async)
+      function _lirePage(pageNum){
+        if(pageNum>total){
+          console.log('[releve] Toutes pages lues — total lignes:', allLines.length);
+          _parseTextLines(allLines,filename);
+          return;
+        }
+        pdf.getPage(pageNum).then(function(page){
+          page.getTextContent().then(function(tc){
+            console.log('[releve] page', pageNum, '—', tc.items.length, 'items');
+            // Grouper les items par Y (±15pt) puis trier par X
+            var rows=[];
+            tc.items.forEach(function(item){
+              if(!item.str||!item.str.trim()) return;
+              var y=item.transform[5];
+              var x=item.transform[4];
+              var found=false;
+              for(var r=0;r<rows.length;r++){
+                if(Math.abs(rows[r].y-y)<15){rows[r].items.push({x:x,s:item.str});found=true;break;}
               }
+              if(!found) rows.push({y:y,items:[{x:x,s:item.str}]});
             });
-          }).catch(function(e){done++;if(done===total)_showReleveError('Erreur page : '+e);});
-        })(p);
+            rows.sort(function(a,b){return b.y-a.y;});
+            rows.forEach(function(row){
+              row.items.sort(function(a,b){return a.x-b.x;});
+              var line=row.items.map(function(it){return it.s;}).join(' ').replace(/\s+/g,' ').trim();
+              if(line) allLines.push(line);
+            });
+            _lirePage(pageNum+1);
+          }).catch(function(e){
+            console.log('[releve] getTextContent page',pageNum,'erreur:',e);
+            _lirePage(pageNum+1);
+          });
+        }).catch(function(e){
+          console.log('[releve] getPage',pageNum,'erreur:',e);
+          _lirePage(pageNum+1);
+        });
       }
+      _lirePage(1);
     }).catch(function(err){_showReleveError('Erreur PDF.js : '+err);});
   }catch(e){_showReleveError('Erreur : '+e);}
 }
@@ -1922,9 +1930,9 @@ function _doParsePdfJs(arrayBuffer,filename){
 // Parser le texte ligne par ligne — format Caisse d'Épargne Pro
 // Pattern: DD/MM/YYYY   DD/MM/YYYY   LIBELLÉ...   - montant,xx
 function _parseTextLines(lines,filename){
-  // DEBUG — afficher les 30 premières lignes pour voir ce que PDF.js produit
+  // DEBUG — afficher les lignes 20 à 80 (les opérations sont après l'en-tête)
   console.log('[releve] _parseTextLines — total lignes:', lines.length);
-  for(var d=0;d<Math.min(30,lines.length);d++) console.log('[releve] ligne['+d+']:', JSON.stringify(lines[d]));
+  for(var d=0;d<Math.min(80,lines.length);d++) console.log('[releve] L'+d+':', JSON.stringify(lines[d]));
   var allOps=[];
   // Plusieurs regex pour couvrir les formats PDF.js possibles
   // Format 1 : "DD/MM/YYYY DD/MM/YYYY LIBELLÉ - 1 200,00"  (signe séparé)
