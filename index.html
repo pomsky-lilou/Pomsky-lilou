@@ -226,7 +226,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.7a.50 — 05 oct 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a.51 — 05 oct 2026</p>
     </div>
   </div>
 </div>
@@ -235,7 +235,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
 <div id="screen-admin" class="screen">
   <div class="topbar">
     <div class="topbar-brand"><span style="font-size:1.2rem">🌸</span><h2>Pomsky de Lilou</h2></div>
-    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.50</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
+    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.51</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
   </div>
   <nav class="bottom-nav">
     <button class="active" data-panel="tableau"><span class="ni">📊</span>Tableau</button>
@@ -1839,22 +1839,134 @@ function importerReleve(input){
   if(!input.files||!input.files[0])return;
   var file=input.files[0];
   input.value='';
+  // Afficher modal avec message de chargement
+  document.getElementById('releve-parse-info').textContent='⏳ Lecture du PDF en cours…';
+  document.getElementById('releve-lignes-wrap').innerHTML='';
+  document.getElementById('releve-parse-error').style.display='none';
+  document.getElementById('modal-releve').classList.add('active');
+
   var reader=new FileReader();
   reader.onload=function(e){
-    try{
-      var text=_extractTextFromPdf(e.target.result);
-      if(!text||text.length<20){
-        _showReleveError('Impossible d\'extraire le texte de ce PDF.\nVérifiez que c\'est bien un relevé Caisse d\'Épargne Pro (fichier numérique, non scanné).');
-        document.getElementById('modal-releve').classList.add('active');
-        return;
-      }
-      _traiterTexteReleve(text,file.name);
-    }catch(err){
-      _showReleveError('Erreur lecture PDF : '+err);
-      document.getElementById('modal-releve').classList.add('active');
+    var buf=e.target.result;
+    if(typeof pdfjsLib!=='undefined'){
+      _doParsePdfJs(buf,file.name);
+    } else {
+      // Charger PDF.js depuis CDN
+      var s=document.createElement('script');
+      s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+      s.onload=function(){
+        if(pdfjsLib&&pdfjsLib.GlobalWorkerOptions){
+          pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+        _doParsePdfJs(buf,file.name);
+      };
+      s.onerror=function(){
+        // Fallback : parser natif si CDN inaccessible
+        var reader2=new FileReader();
+        reader2.onload=function(e2){
+          var text=_extractTextFromPdf(e2.target.result);
+          if(text&&text.length>50){_traiterTexteReleve(text,file.name);}
+          else{_showReleveError('PDF.js inaccessible et extraction native insuffisante.\nConnectez-vous à internet pour importer un relevé.');}
+        };
+        reader2.readAsBinaryString(new Blob([buf]));
+      };
+      document.head.appendChild(s);
     }
   };
-  reader.readAsBinaryString(file);
+  reader.readAsArrayBuffer(file);
+}
+
+// Parser via PDF.js — détecte les opérations directement par position X/Y
+function _doParsePdfJs(arrayBuffer,filename){
+  try{
+    var loadingTask=pdfjsLib.getDocument({data:arrayBuffer});
+    loadingTask.promise.then(function(pdf){
+      var allOps=[];
+      var total=pdf.numPages;
+      var done=0;
+      for(var p=1;p<=total;p++){
+        (function(pageNum){
+          pdf.getPage(pageNum).then(function(page){
+            page.getTextContent().then(function(tc){
+              // Grouper les items par ligne (Y proche ±3pt)
+              var rows=[];
+              tc.items.forEach(function(item){
+                if(!item.str||!item.str.trim()) return;
+                var y=Math.round(item.transform[5]);
+                var x=item.transform[4];
+                var found=false;
+                for(var r=0;r<rows.length;r++){
+                  if(Math.abs(rows[r].y-y)<4){
+                    rows[r].items.push({x:x,s:item.str.trim()});
+                    found=true;break;
+                  }
+                }
+                if(!found) rows.push({y:y,items:[{x:x,s:item.str.trim()}]});
+              });
+              rows.sort(function(a,b){return b.y-a.y;});
+              rows.forEach(function(row){
+                row.items.sort(function(a,b){return a.x-b.x;});
+                // Chercher pattern : un item ressemble à une date dd/mm/yyyy
+                var dateRe=/^(\d{2}\/\d{2}\/\d{4})$/;
+                var montantRe=/^([+\-])?\s*[\d\s]+,\d{2}$/;
+                var items=row.items;
+                if(items.length<3) return;
+                // Chercher la date en début de ligne
+                var dateStr=null;var dateIdx=-1;
+                for(var i=0;i<Math.min(3,items.length);i++){
+                  if(dateRe.test(items[i].s)){dateStr=items[i].s;dateIdx=i;break;}
+                }
+                if(!dateStr) return;
+                // Chercher le montant en fin de ligne
+                var montantStr=null;var montantIdx=-1;
+                // Le montant peut être sur 1 ou 2 items consécutifs (signe + chiffres)
+                for(var j=items.length-1;j>dateIdx+1;j--){
+                  var candidate=items[j].s;
+                  // cas: item = "-" ou "+" suivi de "1 400,00" ou tout en un
+                  if(montantRe.test(candidate)){
+                    montantStr=candidate;montantIdx=j;
+                    // si item précédent est juste le signe
+                    if(j>0&&(items[j-1].s==='-'||items[j-1].s==='+')){
+                      montantStr=items[j-1].s+candidate;montantIdx=j-1;
+                    }
+                    break;
+                  }
+                  // signe seul
+                  if((candidate==='-'||candidate==='+')&&j+1<items.length&&/[\d\s]+,\d{2}$/.test(items[j+1].s)){
+                    montantStr=candidate+items[j+1].s;montantIdx=j;break;
+                  }
+                }
+                if(!montantStr) return;
+                // Libellé = tout ce qui est entre (dateIdx+2) et montantIdx-1
+                // ignorer la 2ème date (date de valeur)
+                var startLib=dateIdx+2;
+                // vérifier si l'item suivant est aussi une date (date valeur)
+                if(startLib<items.length&&dateRe.test(items[startLib].s)) startLib++;
+                var libParts=[];
+                for(var k=startLib;k<montantIdx;k++) libParts.push(items[k].s);
+                var libelle=libParts.join(' ').replace(/\s+/g,' ').trim();
+                if(!libelle) return;
+                var mStr=montantStr.replace(/\s/g,'').replace(',','.');
+                var montant=parseFloat(mStr);
+                if(isNaN(montant)||montant>=0) return;
+                var abs=Math.abs(montant);
+                allOps.push({date:dateStr,libelle:libelle,montant:abs,cat:_guessCat(libelle),dup:_isDuplicate(dateStr,abs,libelle)});
+              });
+              done++;
+              if(done===total){
+                if(!allOps.length){
+                  _showReleveError('Aucune opération de débit trouvée.\nVérifiez que c\'est bien un relevé Caisse d\'Épargne Pro.');
+                } else {
+                  window._releveLignes=allOps;
+                  _afficherModalReleve(allOps,filename);
+                }
+              }
+            });
+          }).catch(function(e){done++;if(done===total&&!allOps.length)_showReleveError('Erreur page : '+e);});
+        })(p);
+      }
+    }).catch(function(err){_showReleveError('Erreur PDF.js : '+err);});
+  }catch(e){_showReleveError('Erreur : '+e);}
 }
 
 // Parser PDF natif — extrait les chaînes texte des flux PDF sans librairie externe
@@ -1934,12 +2046,15 @@ function _extractRawTextFallback(binary){
 
 function _traiterTexteReleve(text,filename){
   var lignes=text.split('\n');
-  // Regex : date valeur libellé montant
-  // Format Caisse d'Épargne : 03/09/2026  01/09/2026  LIBELLÉ   -111,37
-  var re=/^(\d{2}\/\d{2}\/\d{4})\s+\d{2}\/\d{2}\/\d{4}\s+(.+?)\s+([-+]?\s*\d[\d\s]*,\d{2})\s*$/;
   var parsed=[];
+  // Format Caisse d'Épargne : date  date  LIBELLÉ  [+/-] montant,xx
+  // Montant peut contenir des espaces : 1 400,00 ou 111,37
+  // Signe + ou - avant le montant, parfois avec espace
+  var re=/(\d{2}\/\d{2}\/\d{4})\s+\d{2}\/\d{2}\/\d{4}\s{2,}(.+?)\s{2,}([+\-]\s*[\d\s]+,\d{2})\s*$/;
   lignes.forEach(function(l){
-    var m=l.match(re);
+    var ligne=l.trim();
+    if(!ligne) return;
+    var m=ligne.match(re);
     if(!m) return;
     var date=m[1];
     var libelle=m[2].trim().replace(/\s+/g,' ');
@@ -1948,6 +2063,7 @@ function _traiterTexteReleve(text,filename){
     if(isNaN(montant)) return;
     // N'importer que les débits (montant négatif)
     if(montant>=0) return;
+    // Ignorer les frais bancaires inférieurs à 0,50€ (frais VIR 0,10€ etc.)
     var abs=Math.abs(montant);
     var cat=_guessCat(libelle);
     var dup=_isDuplicate(date,abs,libelle);
@@ -1955,13 +2071,13 @@ function _traiterTexteReleve(text,filename){
   });
 
   if(!parsed.length){
-    _showReleveError('Aucune opération de débit trouvée dans ce PDF.\nVérifiez que c\'est bien un relevé Caisse d\'Épargne Pro.');
+    _showReleveError('Aucune opération de débit trouvée dans ce PDF.\nVérifiez que c\'est bien un relevé Caisse d\'Épargne Pro (fichier numérique, non scanné).');
     return;
   }
-
   window._releveLignes=parsed;
   _afficherModalReleve(parsed,filename);
 }
+
 
 function _afficherModalReleve(lignes,filename){
   var info=document.getElementById('releve-parse-info');
