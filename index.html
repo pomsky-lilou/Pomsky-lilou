@@ -228,7 +228,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.7a.68 — 05 oct 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a.69 — 05 oct 2026</p>
     </div>
   </div>
 </div>
@@ -1893,7 +1893,9 @@ function _doParsePdfJs(arrayBuffer,filename){
         pdf.getPage(pageNum).then(function(page){
           page.getTextContent().then(function(tc){
 
-            // Grouper les items par Y (±3pt) puis trier par X
+            // Grouper les items par Y (±5pt) puis trier par X
+            // Tolérance 5pt : items sur la même ligne visuelle diff <0.5pt,
+            // mais format très indenté page 1 peut varier jusqu'à 4pt
             var rows=[];
             tc.items.forEach(function(item){
               if(!item.str||!item.str.trim()) return;
@@ -1901,7 +1903,7 @@ function _doParsePdfJs(arrayBuffer,filename){
               var x=item.transform[4];
               var found=false;
               for(var r=0;r<rows.length;r++){
-                if(Math.abs(rows[r].y-y)<3){rows[r].items.push({x:x,s:item.str});found=true;break;}
+                if(Math.abs(rows[r].y-y)<5){rows[r].items.push({x:x,s:item.str});found=true;break;}
               }
               if(!found) rows.push({y:y,items:[{x:x,s:item.str}]});
             });
@@ -1952,14 +1954,21 @@ function _parseTextLines(lines,filename){
   });
   // Fusionner les lignes orphelines : si ligne N contient une date mais pas de montant,
   // et ligne N+1 contient un montant isolé (ex: "- 75,52"), les fusionner
+  // Format page 1 CdE Pro : PDF.js peut séparer le libellé du montant
   var reMontantSeul=/^\s*[-+]\s*[\d\s]+,\d{2}\s*$/;
   var reDateDebut=/^\d{2}\/\d{2}\/\d{4}/;
   var mergedLines=[];
   for(var i=0;i<normLines.length;i++){
     var l=normLines[i];
+    // Cas 1 : date mais sans aucun montant → fusionner avec ligne suivante si c'est un montant
     if(reDateDebut.test(l)&&!(l.match(/[-+]\s*[\d\s]+,\d{2}/))&&i+1<normLines.length&&reMontantSeul.test(normLines[i+1])){
       mergedLines.push(l+' '+normLines[i+1].trim());
-      i++; // sauter la ligne suivante déjà fusionnée
+      i++;
+    // Cas 2 : date + libellé + montant sans signe, suivi d'une ligne "- montant" isolée
+    // (PDF.js peut séparer le signe du chiffre pour les montants très décalés à droite)
+    } else if(reDateDebut.test(l)&&l.match(/[\d\s]+,\d{2}\s*$/)&&!(l.match(/[-+]\s*[\d\s]+,\d{2}/))&&i+1<normLines.length&&/^\s*[-+]\s*[\d\s]+,\d{2}\s*$/.test(normLines[i+1])){
+      mergedLines.push(l+' '+normLines[i+1].trim());
+      i++;
     } else {
       mergedLines.push(l);
     }
@@ -1975,8 +1984,8 @@ function _parseTextLines(lines,filename){
     var line=rawLine;
     var m=line.match(re)||line.match(re2)||line.match(reCompte);
     if(!m){
-      // Log uniquement les lignes avec une date qui n'ont pas matché
-      if(/\d{2}\/\d{2}\/\d{4}/.test(line)&&/,\d{2}/.test(line)) console.log('[releve] NON MATCHÉ:',JSON.stringify(line));
+      // Log toutes les lignes avec une date (pour debug des lignes manquantes)
+      if(/\d{2}\/\d{2}\/\d{4}/.test(line)) console.log('[releve] SANS MATCH:',JSON.stringify(line));
       return;
     }
     var dateStr=m[1];
