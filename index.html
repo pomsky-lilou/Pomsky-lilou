@@ -228,7 +228,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.7a.53 — 05 oct 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a.54 — 05 oct 2026</p>
     </div>
   </div>
 </div>
@@ -450,7 +450,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
           <div class="card-header" style="margin-bottom:.4rem">
             <h2>Historique</h2>
             <label for="pdf-releve-input" class="btn btn-info btn-sm" style="cursor:pointer">📂 Importer relevé PDF</label>
-            <input type="file" id="pdf-releve-input" accept=".pdf,application/pdf" style="display:none;position:absolute;left:-9999px" onchange="importerReleve(this)">
+            <input type="file" id="pdf-releve-input" accept=".pdf,application/pdf" style="opacity:0;width:1px;height:1px;position:absolute;pointer-events:none" onchange="importerReleve(this)">
           </div>
           <div id="dep-perso-solde" style="display:none;background:#fff3e0;border-radius:6px;padding:.4rem .8rem;font-size:.8rem;color:#7B4B00;margin-bottom:.5rem"></div>
           <div id="dep-list"></div>
@@ -1838,6 +1838,7 @@ function _isDuplicate(date,montant,desc){
 window._releveLignes=[];
 
 function importerReleve(input){
+  console.log('[releve] importerReleve appelée, files:', input&&input.files&&input.files.length);
   if(!input.files||!input.files[0])return;
   var file=input.files[0];
   var fname=file.name;
@@ -1845,7 +1846,9 @@ function importerReleve(input){
   document.getElementById('releve-parse-info').textContent='⏳ Lecture du PDF en cours…';
   document.getElementById('releve-lignes-wrap').innerHTML='';
   document.getElementById('releve-parse-error').style.display='none';
-  document.getElementById('modal-releve').classList.add('active');
+  var modalEl=document.getElementById('modal-releve');
+  console.log('[releve] modal element:', modalEl);
+  if(modalEl) modalEl.classList.add('active');
 
   // Configurer PDF.js worker (pré-chargé dans le <head>)
   if(typeof pdfjsLib!=='undefined'&&pdfjsLib.GlobalWorkerOptions){
