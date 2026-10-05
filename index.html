@@ -228,7 +228,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.7a.69 — 05 oct 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a.71 — 05 oct 2026</p>
     </div>
   </div>
 </div>
@@ -1893,9 +1893,9 @@ function _doParsePdfJs(arrayBuffer,filename){
         pdf.getPage(pageNum).then(function(page){
           page.getTextContent().then(function(tc){
 
-            // Grouper les items par Y (±5pt) puis trier par X
-            // Tolérance 5pt : items sur la même ligne visuelle diff <0.5pt,
-            // mais format très indenté page 1 peut varier jusqu'à 4pt
+            // Grouper les items par Y (±2pt) puis trier par X
+            // Items sur la même ligne visuelle diffèrent de <0.5pt
+            // Tolérance serrée pour éviter de fusionner deux lignes d'opérations distinctes
             var rows=[];
             tc.items.forEach(function(item){
               if(!item.str||!item.str.trim()) return;
@@ -1903,7 +1903,7 @@ function _doParsePdfJs(arrayBuffer,filename){
               var x=item.transform[4];
               var found=false;
               for(var r=0;r<rows.length;r++){
-                if(Math.abs(rows[r].y-y)<5){rows[r].items.push({x:x,s:item.str});found=true;break;}
+                if(Math.abs(rows[r].y-y)<2){rows[r].items.push({x:x,s:item.str});found=true;break;}
               }
               if(!found) rows.push({y:y,items:[{x:x,s:item.str}]});
             });
@@ -1985,7 +1985,7 @@ function _parseTextLines(lines,filename){
     var m=line.match(re)||line.match(re2)||line.match(reCompte);
     if(!m){
       // Log toutes les lignes avec une date (pour debug des lignes manquantes)
-      if(/\d{2}\/\d{2}\/\d{4}/.test(line)) console.log('[releve] SANS MATCH:',JSON.stringify(line));
+      // ligne avec date non reconnue — ignorée
       return;
     }
     var dateStr=m[1];
@@ -1996,8 +1996,6 @@ function _parseTextLines(lines,filename){
     var montant=parseFloat(montantStr.replace(',','.'));
     if(isNaN(montant)||montant<=0) return;
     matched++;
-    // Filtrer les frais de virement < 1€ (FRAIS VIR, COMMISSIONS minimes)
-    // On garde tout pour que l'utilisateur choisisse
     allOps.push({
       date:dateStr,
       libelle:libelle,
