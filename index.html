@@ -10,16 +10,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script>
 const firebaseConfig={apiKey:"AIzaSyBhrTrkBQAU7PfkTsvIXJFQVQJEQ5NNlP8",authDomain:"pomsky-lilou.firebaseapp.com",databaseURL:"https://pomsky-lilou-default-rtdb.europe-west1.firebasedatabase.app",projectId:"pomsky-lilou",storageBucket:"pomsky-lilou.firebasestorage.app",messagingSenderId:"404717143128",appId:"1:404717143128:web:5abd1351d79fa0f92db62d"};
-try{firebase.initializeApp(firebaseConfig);const db=firebase.database();window._fb={connected:false,save:function(d){try{db.ref('pomsky').set(JSON.parse(JSON.stringify(d)));}catch(e){}},load:function(cb){db.ref('pomsky').get().then(s=>cb(s.exists()?s.val():null)).catch(()=>cb(null));},listen:function(cb){db.ref('pomsky').on('value',s=>{if(s.exists())cb(s.val());});}};window._wasConnected=true;
-db.ref('.info/connected').on('value',function(s){
-  var nowConnected=!!s.val();
-  window._fb.connected=nowConnected;
-  document.querySelectorAll('.sync-dot').forEach(function(el){el.textContent=nowConnected?'🟢':'🔴';});
-  if(nowConnected && !window._wasConnected){
-    if(window.onFirebaseReconnect)window.onFirebaseReconnect();
-  }
-  window._wasConnected=nowConnected;
-});}catch(e){window._fb=null;}
+try{firebase.initializeApp(firebaseConfig);const db=firebase.database();window._fb={connected:false,save:function(d){try{db.ref('pomsky').set(JSON.parse(JSON.stringify(d)));}catch(e){}},load:function(cb){db.ref('pomsky').get().then(s=>cb(s.exists()?s.val():null)).catch(()=>cb(null));},listen:function(cb){db.ref('pomsky').on('value',s=>{if(s.exists())cb(s.val());});}};db.ref('.info/connected').on('value',s=>{window._fb.connected=!!s.val();document.querySelectorAll('.sync-dot').forEach(el=>{el.textContent=window._fb.connected?'🟢':'🔴';});});}catch(e){window._fb=null;}
 </script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
@@ -138,6 +129,14 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
 .crm-name{font-family:'DM Serif Display',serif;font-size:.95rem;color:var(--forest)}
 .crm-meta{font-size:.73rem;color:var(--muted);margin-top:.15rem}
 .depense-row{display:flex;justify-content:space-between;align-items:center;padding:.45rem .65rem;border-bottom:1px solid var(--border);font-size:.83rem}
+.releve-ligne{display:flex;align-items:center;gap:.5rem;padding:.38rem .65rem;border-bottom:1px solid var(--border);font-size:.8rem}
+.releve-ligne:last-child{border-bottom:none}
+.releve-ligne input[type=checkbox]{width:16px;height:16px;flex-shrink:0;cursor:pointer}
+.releve-ligne-info{flex:1;min-width:0}
+.releve-ligne-montant{font-weight:700;color:var(--alert);white-space:nowrap}
+.releve-cat-sel{font-size:.75rem;padding:.2rem .45rem;border:1px solid var(--border);border-radius:5px;background:var(--cream);color:var(--text);font-family:'DM Sans',sans-serif}
+.releve-dup{opacity:.45;background:#f9f9f9}
+.releve-dup-badge{font-size:.66rem;background:var(--parchment);color:var(--muted);padding:.1rem .35rem;border-radius:4px;white-space:nowrap}
 .depense-row:last-child{border-bottom:none}
 .ardoise-messages{max-height:240px;overflow-y:auto;display:flex;flex-direction:column;gap:.38rem;margin-bottom:.55rem}
 .ardoise-msg{padding:.45rem .75rem;border-radius:9px;max-width:88%;font-size:.83rem;line-height:1.4}
@@ -227,7 +226,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.7a-ADM.48 — 1 sept 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a.46 — 05 oct 2026</p>
     </div>
   </div>
 </div>
@@ -236,7 +235,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
 <div id="screen-admin" class="screen">
   <div class="topbar">
     <div class="topbar-brand"><span style="font-size:1.2rem">🌸</span><h2>Pomsky de Lilou</h2></div>
-    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a-ADM.48</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
+    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.46</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
   </div>
   <nav class="bottom-nav">
     <button class="active" data-panel="tableau"><span class="ni">📊</span>Tableau</button>
@@ -379,12 +378,17 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
           <div class="form-row">
             <div class="field"><label>Chiot affecté</label><select id="c-chiot"><option value="">— Choisir —</option></select></div>
             <div class="field"><label>Prix de vente (€)</label><input type="number" id="c-prix" placeholder="1200" oninput="updateAcomptePreview()"></div>
-            <div class="field"><label>Acompte réservation (€)</label><input type="number" id="c-acompte" placeholder="Suggestion : 30%" oninput="updatePaiements()"></div>
+            <div class="field"><label>Acompte (€) <small style="font-weight:400;color:var(--muted)">≈30%</small></label><input type="number" id="c-acompte" placeholder="Auto 30%" oninput="updatePaiements()"></div>
           </div>
-          <div id="paiement-preview" style="display:none;background:#f0f9f4;border-radius:6px;padding:.4rem .8rem;font-size:.78rem;color:var(--forest);margin-bottom:.3rem"></div>
+          <div class="form-row" style="margin-bottom:.2rem">
+            <div class="field"><label>Versement 1 (€)</label><input type="number" id="c-v1" placeholder="Auto" oninput="updatePaiementsFromV1()"></div>
+            <div class="field"><label>Versement 2 (€)</label><input type="number" id="c-v2" placeholder="Auto" oninput="updatePaiementsFromV2()"></div>
+            <div class="field"><label>Versement 3 (€)</label><input type="number" id="c-v3" placeholder="Auto" oninput="updatePaiementsFromV3()"></div>
+          </div>
+          <div id="paiement-preview" style="background:#f0f9f4;border-radius:6px;padding:.4rem .8rem;font-size:.78rem;color:var(--forest);margin-bottom:.3rem"></div>
           <div class="form-row">
             <div class="field"><label>Réservation</label><select id="c-type-resa"><option value="nee">Sur chiot né</option><option value="future">Future portée</option></select></div>
-            <div class="field"><label>Paiement</label><select id="c-paiement"><option value="comptant">Comptant</option><option value="3fois">3x sans frais</option></select></div>
+            <div class="field"><label>Paiement</label><select id="c-paiement" onchange="updatePaiements()"><option value="comptant">Comptant</option><option value="2fois">2x sans frais</option><option value="3fois">3x sans frais</option><option value="4fois">4x sans frais</option></select></div>
           </div>
           <div class="form-row">
             <div class="field"><label>Date visite</label><input type="date" id="c-visite"></div>
@@ -417,11 +421,18 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
           <div class="form-row">
             <div class="field"><label>Catégorie</label>
               <select id="d-cat">
-                <option value="nourriture">🥩 Nourriture</option>
-                <option value="vaccins">💉 Vaccins</option>
+                <option value="nourriture">🥩 Alimentation</option>
                 <option value="veterinaire">🏥 Vétérinaire</option>
-                <option value="equipement">🔧 Équipements</option>
+                <option value="vaccins">💉 Vaccins</option>
+                <option value="equipement">🏠 Matériel & équipement</option>
                 <option value="hygiene">🧴 Hygiène</option>
+                <option value="transport">🚗 Transport</option>
+                <option value="charges">💡 Charges</option>
+                <option value="administratif">📋 Administratif</option>
+                <option value="fournitures">🛒 Fournitures diverses</option>
+                <option value="perso">👤 Perso (à rembourser)</option>
+                <option value="repro">🐾 Reproduction</option>
+                <option value="toilettage">✂️ Toilettage</option>
                 <option value="autre">📦 Autre</option>
               </select>
             </div>
@@ -433,7 +444,15 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
           </div>
           <button class="btn btn-danger btn-sm" id="btn-save-dep">➖ Enregistrer</button>
         </div>
-        <div class="card" style="margin-top:.5rem"><h2 style="margin-bottom:.5rem">Historique</h2><div id="dep-list"></div></div>
+        <div class="card" style="margin-top:.5rem">
+          <div class="card-header" style="margin-bottom:.4rem">
+            <h2>Historique</h2>
+            <button class="btn btn-info btn-sm" onclick="document.getElementById('pdf-releve-input').click()">📂 Importer relevé PDF</button>
+            <input type="file" id="pdf-releve-input" accept=".pdf,application/pdf" style="display:none" onchange="importerReleve(this)">
+          </div>
+          <div id="dep-perso-solde" style="display:none;background:#fff3e0;border-radius:6px;padding:.4rem .8rem;font-size:.8rem;color:#7B4B00;margin-bottom:.5rem"></div>
+          <div id="dep-list"></div>
+        </div>
       </div>
       <div id="fin-recettes" class="subtab">
         <div class="card"><h2 style="margin-bottom:.5rem">Recettes clients</h2><div id="rec-list"></div></div>
@@ -678,6 +697,22 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
   </div>
 </div>
 
+<!-- MODAL IMPORT RELEVE -->
+<div id="modal-releve" class="modal-overlay">
+  <div class="modal" style="max-width:600px;max-height:90vh;overflow-y:auto">
+    <h2>📂 Import relevé bancaire</h2>
+    <div id="releve-parse-info" style="font-size:.8rem;color:var(--muted);margin-bottom:.6rem"></div>
+    <div id="releve-lignes-wrap" style="max-height:55vh;overflow-y:auto;border:1.5px solid var(--border);border-radius:8px"></div>
+    <div id="releve-parse-error" style="display:none;background:#fff0f0;border:1.5px solid #f5c6cb;border-radius:8px;padding:.6rem .9rem;margin-top:.5rem;font-size:.83rem;color:var(--alert)"></div>
+    <div class="modal-actions" style="margin-top:.8rem">
+      <button class="btn btn-sm btn-secondary" onclick="toggleAllReleve(true)">✅ Tout cocher</button>
+      <button class="btn btn-sm btn-secondary" onclick="toggleAllReleve(false)">⬜ Tout décocher</button>
+      <button class="btn btn-ok btn-sm" id="btn-valider-releve">➖ Importer sélection</button>
+      <button class="btn btn-secondary btn-sm" data-close="modal-releve">Annuler</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODALS -->
 <div id="modal-saillie" class="modal-overlay">
   <div class="modal">
@@ -698,7 +733,6 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
   <div class="modal"><h2 id="mc-title">Dossier client</h2><div id="mc-content"></div>
     <div class="modal-actions">
       <button class="btn btn-info btn-sm" onclick="generateContrat(window._currentClientId)">📄 Contrat imprimable</button>
-      <button class="btn btn-sm" style="background:#2b579a;color:white" onclick="generateContratWord(window._currentClientId)">📝 Contrat Word</button>
       <button class="btn btn-sm" style="background:var(--amber);color:white" onclick="generateCertifFromFamille(window._currentClientId)">🏆 Pedigree</button>
       <button class="btn btn-danger btn-sm" id="btn-del-client">🗑️ Supprimer</button>
       <button class="btn btn-secondary btn-sm" data-close="modal-client">Fermer</button>
@@ -713,7 +747,7 @@ var _editingClientId = null;
 var _currentPorteeId = null;
 const FEMELLES=[{name:'Paoma',r:true},{name:'Coahoma',r:true},{name:'Abby',r:false},{name:'Alaya',r:false},{name:'Pepper',r:true},{name:'Mystic',r:true},{name:'Maika',r:true},{name:'Loupette',r:true},{name:'Pitch',r:true},{name:'Linette',r:false},{name:'Nina',r:true},{name:'Brooke',r:false},{name:'Baboo',r:false},{name:'Kumi',r:false}];
 const ACTIONS_COM=[{id:'photos',label:'📸 Photos des chiots réalisées'},{id:'site',label:'🌐 Site internet mis à jour'},{id:'reseaux',label:'📱 Réseaux sociaux publiés'},{id:'annonces',label:'📋 Annonces mises à jour'},{id:'contrats',label:'📄 Contrats de vente préparés'}];
-const DEP_CAT={nourriture:'🥩 Nourriture',vaccins:'💉 Vaccins',veterinaire:'🏥 Vétérinaire',equipement:'🔧 Équipements',hygiene:'🧴 Hygiène',autre:'📦 Autre'};
+const DEP_CAT={nourriture:'🥩 Alimentation',vaccins:'💉 Vaccins',veterinaire:'🏥 Vétérinaire',equipement:'🏠 Matériel & équipement',hygiene:'🧴 Hygiène',transport:'🚗 Transport',charges:'💡 Charges',administratif:'📋 Administratif',fournitures:'🛒 Fournitures diverses',perso:'👤 Perso (à rembourser)',repro:'🐾 Reproduction',toilettage:'✂️ Toilettage',autre:'📦 Autre'};
 
 // ══════ STATE ══════
 let state={
@@ -769,40 +803,10 @@ function startSync(){
   });
   // Auto-save to Firebase every 30 seconds
   setInterval(function(){
-    if(state.currentUser && window._fb && window._fb.connected && !window._resyncing){
+    if(state.currentUser && window._fb && window._fb.connected){
       window._fb.save(JSON.parse(JSON.stringify(state)));
     }
   }, 30000);
-  // Also resync if the app comes back to the foreground (Safari can suspend
-  // a tab on weak wifi, and the connectivity flag alone doesn't catch that)
-  document.addEventListener('visibilitychange', function(){
-    if(document.visibilityState==='visible' && window._fb && window._fb.connected){
-      onFirebaseReconnect();
-    }
-  });
-}
-
-// Called when Firebase reports we're back online after a drop, or when the
-// tab comes back to the foreground. Reloads the authoritative remote data
-// first (so we don't overwrite anything written elsewhere while we were
-// offline), THEN pushes any edit made locally while disconnected.
-function onFirebaseReconnect(){
-  if(!window._fb || window._resyncing)return;
-  window._resyncing=true;
-  if(typeof toast==='function')toast('🔄 Reconnexion — synchronisation...');
-  window._fb.load(function(d){
-    if(d){
-      mergeState(d);
-      try{localStorage.setItem('pomsky_v2',JSON.stringify(d));}catch(e){}
-      if(state.currentUser){renderAll();updateNavBadges();}
-    }
-    if(window._pendingSave){
-      window._fb.save(window._pendingSave);
-      window._pendingSave=null;
-    }
-    window._resyncing=false;
-    if(typeof toast==='function')toast('✅ Synchronisé');
-  });
 }
 
 // ══════ UTILS ══════
@@ -836,13 +840,14 @@ function switchSub(id){
     // Reset form only if NOT editing
     if(!_editingClientId){
       ['c-prenom','c-nom','c-tel','c-email','c-adresse','c-prix','c-acompte',
+       'c-v1','c-v2','c-v3',
        'c-visite','c-depart','c-notes'].forEach(function(fid){
         var el=document.getElementById(fid);if(el)el.value='';
       });
       var acEl=document.getElementById('c-acompte');
-      if(acEl)acEl.placeholder='Suggestion : 30%';
+      if(acEl)acEl.placeholder='Auto 30%';
       var prev=document.getElementById('paiement-preview');
-      if(prev)prev.style.display='none';
+      if(prev)prev.innerHTML='';
       var paiEl=document.getElementById('c-paiement');
       if(paiEl)paiEl.value='comptant';
       var resaEl=document.getElementById('c-type-resa');
@@ -920,7 +925,7 @@ function doLogout(){state.currentUser=null;document.getElementById('login-id').v
 function renderTableau(){
   const activeSaillies=(state.saillies||[]).filter(s=>s.statut==='active').length;
   const activePortees=(state.portees||[]).filter(p=>p.statut==='active').length;
-  const chiots=(state.portees||[]).reduce((a,p)=>a+(p.chiots||[]).filter(c=>!c.vendu).length,0);
+  var chiots=(state.portees||[]).reduce(function(a,p){return a+(p.chiots||[]).filter(function(c){var hasClient=(state.clients||[]).some(function(cl){return cl.chiot===c.id;});return !c.vendu&&!hasClient;}).length;},0);
   const ca=(state.clients||[]).reduce((a,c)=>a+(parseFloat(c.prix)||0),0);
   document.getElementById('stats-grid').innerHTML=`
     <div class="stat-card"><span class="stat-value">${activeSaillies}</span><div class="stat-label">Saillies actives</div></div>
@@ -1558,10 +1563,37 @@ function saveClient(){
   if(!prenom||!nom){toast('Nom et prénom requis');return;}
   var acEl=document.getElementById('c-acompte');
   var acompte=acEl&&acEl.value?parseFloat(acEl.value):Math.round(prix*0.30);
+  // Lire V1/V2/V3 depuis les champs ou calculer automatiquement
+  var v1El=document.getElementById('c-v1'); var v2El=document.getElementById('c-v2'); var v3El=document.getElementById('c-v3');
+  var solde=prix-acompte;
+  var v1=v1El&&v1El.value?parseFloat(v1El.value):0;
+  var v2=v2El&&v2El.value?parseFloat(v2El.value):0;
+  var v3=v3El&&v3El.value?parseFloat(v3El.value):0;
+  // Construction des paiements selon mode
+  var paiementsArr=[];
+  paiementsArr.push({label:'Acompte réservation',montant:acompte,recu:false,date:''});
+  if(paiement==='comptant'){
+    if(solde>0) paiementsArr.push({label:'Solde',montant:solde,recu:false,date:''});
+  } else if(paiement==='2fois'){
+    var s1=v1>0?v1:solde;
+    if(s1>0) paiementsArr.push({label:'Versement 1',montant:s1,recu:false,date:''});
+  } else if(paiement==='3fois'){
+    var s1=v1>0?v1:Math.round(solde/2);
+    var s2=v2>0?v2:(solde-s1);
+    if(s1>0) paiementsArr.push({label:'Versement 1',montant:s1,recu:false,date:''});
+    if(s2>0) paiementsArr.push({label:'Versement 2',montant:s2,recu:false,date:''});
+  } else if(paiement==='4fois'){
+    var s1=v1>0?v1:Math.round(solde/3);
+    var s2=v2>0?v2:Math.round((solde-s1)/2);
+    var s3=v3>0?v3:(solde-s1-s2);
+    if(s1>0) paiementsArr.push({label:'Versement 1',montant:s1,recu:false,date:''});
+    if(s2>0) paiementsArr.push({label:'Versement 2',montant:s2,recu:false,date:''});
+    if(s3>0) paiementsArr.push({label:'Versement 3',montant:s3,recu:false,date:''});
+  }
   var caution=2000;
-  var client={id:Date.now().toString(),prenom,nom,tel,email,adresse,chiot,prix,typeResa,paiement,visite,depart,notes,caution,
-    acompte:acompte,
-    paiements:paiement==='3fois'?[{label:'Acompte réservation',montant:acompte,recu:false,date:''},{label:'Virement 2',montant:Math.round((prix-acompte)/2),recu:false,date:''},{label:'Solde final',montant:prix-acompte-Math.round((prix-acompte)/2),recu:false,date:''}]:[{label:'Acompte réservation',montant:acompte,recu:false,date:''},{label:'Solde',montant:prix-acompte,recu:false,date:''}],
+  var client={id:Date.now().toString(),prenom:prenom,nom:nom,tel:tel,email:email,adresse:adresse,chiot:chiot,prix:prix,typeResa:typeResa,paiement:paiement,visite:visite,depart:depart,notes:notes,caution:caution,
+    acompte:acompte,v1:v1||0,v2:v2||0,v3:v3||0,
+    paiements:paiementsArr,
     chequeSteril:{montant:2000,recu:false,rendu:false},
     createdAt:new Date().toISOString()};
   if(chiot)(state.portees||[]).forEach(p=>{const c=(p.chiots||[]).find(x=>x.id===chiot);if(c)c.vendu=true;});
@@ -1578,7 +1610,7 @@ function saveClient(){
   }else{
     state.clients.unshift(client);saveState();toast('✅ Dossier créé');
   }
-  ['c-prenom','c-nom','c-tel','c-email','c-prix','c-visite','c-depart','c-notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['c-prenom','c-nom','c-tel','c-email','c-adresse','c-prix','c-acompte','c-v1','c-v2','c-v3','c-visite','c-depart','c-notes'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
   switchSub('crm-liste');renderCRM();
 }
 function renderCRM(){
@@ -1652,9 +1684,13 @@ function editClient(id){
     document.getElementById('c-email').value=c.email||'';
     var adr=document.getElementById('c-adresse');if(adr)adr.value=c.adresse||'';
     document.getElementById('c-prix').value=c.prix||'';
-    // Set acompte if field exists
+    // Set acompte & versements
     var acEl=document.getElementById('c-acompte');if(acEl)acEl.value=c.acompte||'';
+    var v1E=document.getElementById('c-v1');if(v1E)v1E.value=c.v1||'';
+    var v2E=document.getElementById('c-v2');if(v2E)v2E.value=c.v2||'';
+    var v3E=document.getElementById('c-v3');if(v3E)v3E.value=c.v3||'';
     document.getElementById('c-paiement').value=c.paiement||'comptant';
+    setTimeout(updatePaiements,50);
     document.getElementById('c-type-resa').value=c.typeResa||'nee';
     document.getElementById('c-visite').value=c.visite||'';
     document.getElementById('c-depart').value=c.depart||'';
@@ -1675,7 +1711,7 @@ function openClientModal(id){
   document.getElementById('mc-title').textContent=c.prenom+' '+c.nom;
   var ph=(c.paiements||[]).map((p,i)=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:.38rem .5rem;border-bottom:1px solid var(--border);font-size:.82rem"><span>${p.label} — ${p.montant}€</span>${p.recu?`<span class="badge badge-ok">✓ ${p.date}</span>`:`<button class="btn btn-ok btn-sm" onclick="markPay('${id}',${i})">Reçu</button>`}</div>`).join('');
   window._currentClientId = id;
-  document.getElementById('mc-content').innerHTML=`<div style="font-size:.82rem;display:flex;flex-direction:column;gap:.28rem;margin-bottom:.7rem">${c.tel?`<div>📞 ${c.tel}</div>`:''} ${c.email?`<div>📧 ${c.email}</div>`:''} ${c.visite?`<div style="display:flex;align-items:center;gap:.5rem">👤 Visite : ${fmtShort(c.visite)} <button class="btn btn-info btn-sm" onclick="addToCalendar('${id}','visite')">📅 Ajouter au calendrier</button></div>`:''} ${c.depart?`<div style="display:flex;align-items:center;gap:.5rem">✈️ Départ : ${fmtShort(c.depart)} <button class="btn btn-info btn-sm" onclick="addToCalendar('${id}','depart')">📅 Ajouter au calendrier</button></div>`:''} ${c.notes?`<div>📝 ${c.notes}</div>`:''}</div>
+  document.getElementById('mc-content').innerHTML=`<div style="font-size:.82rem;display:flex;flex-direction:column;gap:.28rem;margin-bottom:.7rem">${c.tel?`<div>📞 ${c.tel}</div>`:''} ${c.email?`<div>📧 ${c.email}</div>`:''} ${c.visite?`<div>👤 Visite : ${fmtShort(c.visite)}</div>`:''} ${c.depart?`<div>✈️ Départ : ${fmtShort(c.depart)}</div>`:''} ${c.notes?`<div>📝 ${c.notes}</div>`:''}</div>
   <h3 style="margin-bottom:.35rem">Paiements (${c.prix}€)</h3>
   <div style="border:1.5px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:.7rem">${ph}</div>
   <h3 style="margin-bottom:.35rem">Caution stérilisation (${(c.chequeSteril?c.chequeSteril.montant:0)||0}€)</h3>
@@ -1684,41 +1720,6 @@ function openClientModal(id){
     ${(c.chequeSteril?c.chequeSteril.rendu:false)?'<span class="badge badge-ok">✓ Rendu/détruit</span>':`<button class="btn btn-info btn-sm" onclick="markSterilRendu('${id}')">Rendu/détruit</button>`}
   </div>`;
   openM('modal-client');
-}
-
-// ══════ CALENDRIER iOS (.ics) ══════
-function icsPad(x){x=''+x;return x.length<2?'0'+x:x;}
-function icsNow(){var n=new Date();return n.getUTCFullYear()+icsPad(n.getUTCMonth()+1)+icsPad(n.getUTCDate())+'T'+icsPad(n.getUTCHours())+icsPad(n.getUTCMinutes())+icsPad(n.getUTCSeconds())+'Z';}
-function icsEscape(s){return (s||'').replace(/\\/g,'\\\\').replace(/,/g,'\\,').replace(/;/g,'\\;').replace(/\n/g,'\\n');}
-function addToCalendar(clientId,kind){
-  var c=(state.clients||[]).find(function(x){return x.id===clientId;});
-  if(!c){toast('Fiche introuvable');return;}
-  var dateStr=kind==='visite'?c.visite:c.depart;
-  if(!dateStr){toast('Aucune date renseignée');return;}
-  var title=kind==='visite'?('👤 Visite '+c.prenom+' '+c.nom):('✈️ Départ '+c.prenom+' '+c.nom);
-  var descParts=[];
-  if(c.tel)descParts.push('Tél: '+c.tel);
-  if(c.chiot)descParts.push('Chiot: '+c.chiot);
-  var desc=descParts.join(' — ');
-  var startYMD=dateStr.replace(/-/g,'');
-  var p=dateStr.split('-');
-  var dt=new Date(parseInt(p[0],10),parseInt(p[1],10)-1,parseInt(p[2],10));
-  dt.setDate(dt.getDate()+1);
-  var endYMD=dt.getFullYear()+icsPad(dt.getMonth()+1)+icsPad(dt.getDate());
-  var uid='pomsky-'+kind+'-'+clientId+'@pomsky-lilou';
-  var ics=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Pomsky de Lilou//FR','CALSCALE:GREGORIAN','BEGIN:VEVENT',
-    'UID:'+uid,'DTSTAMP:'+icsNow(),'DTSTART;VALUE=DATE:'+startYMD,'DTEND;VALUE=DATE:'+endYMD,
-    'SUMMARY:'+icsEscape(title),'DESCRIPTION:'+icsEscape(desc),'END:VEVENT','END:VCALENDAR'].join('\r\n');
-  var blob=new Blob([ics],{type:'text/calendar;charset=utf-8'});
-  var blobUrl=URL.createObjectURL(blob);
-  var a=document.createElement('a');
-  a.href=blobUrl;
-  a.download=(kind==='visite'?'visite-':'depart-')+c.prenom+'.ics';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(function(){URL.revokeObjectURL(blobUrl);},4000);
-  toast('📅 Événement téléchargé — ouvrez-le pour l\'ajouter à Calendrier');
 }
 function markPay(cid,idx){const c=(state.clients||[]).find(x=>x.id===cid);if(!c)return;c.paiements[idx].recu=true;c.paiements[idx].date=fmtShort(today());saveState();openClientModal(cid);renderCRM();toast('💶 Paiement enregistré');}
 function markSterilRecu(cid){const c=(state.clients||[]).find(x=>x.id===cid);if(c&&c.chequeSteril){c.chequeSteril.recu=true;saveState();openClientModal(cid);toast('✅ Chèque reçu');}}
@@ -1731,20 +1732,36 @@ function renderFinance(){
   var depenses=(state.depenses||[]).reduce((a,d)=>a+(parseFloat(d.montant)||0),0);
   var solde=recettes-depenses;
   var prev=(state.clients||[]).reduce((a,c)=>a+(parseFloat(c.prix)||0),0);
+  var persoStat=(state.depenses||[]).filter(function(d){return d.categorie==='perso';}).reduce(function(a,d){return a+(parseFloat(d.montant)||0);},0);
   document.getElementById('fin-stats').innerHTML=`
     <div class="stat-card"><span class="stat-value" style="color:var(--ok)">${recettes.toLocaleString('fr-FR')}€</span><div class="stat-label">Encaissé</div></div>
     <div class="stat-card"><span class="stat-value" style="color:var(--alert)">${depenses.toLocaleString('fr-FR')}€</span><div class="stat-label">Dépenses</div></div>
     <div class="stat-card"><span class="stat-value" style="color:${solde>=0?'var(--ok)':'var(--alert)'}">${solde.toLocaleString('fr-FR')}€</span><div class="stat-label">Solde</div></div>
-    <div class="stat-card"><span class="stat-value">${prev.toLocaleString('fr-FR')}€</span><div class="stat-label">CA prévisionnel</div></div>`;
+    <div class="stat-card"><span class="stat-value">${prev.toLocaleString('fr-FR')}€</span><div class="stat-label">CA prévisionnel</div></div>
+    ${persoStat>0?`<div class="stat-card"><span class="stat-value" style="color:var(--warn);font-size:1.1rem">${persoStat.toLocaleString('fr-FR')}€</span><div class="stat-label">👤 Perso à rembourser</div></div>`:''}`.trim();
   var pct=prev?Math.min(Math.round(recettes/prev*100),100):0;
   document.getElementById('fin-ca').innerHTML=`<div style="display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:.28rem"><span>Encaissé : ${recettes.toLocaleString('fr-FR')}€</span><span>Prévisionnel : ${prev.toLocaleString('fr-FR')}€</span></div><div class="prog-bar-bg" style="height:12px"><div class="prog-bar-fill" style="width:${pct}%;background:var(--ok)"></div></div><div style="text-align:right;font-size:.73rem;color:var(--muted);margin-top:.15rem">${pct}%</div>`;
   var enAtt=(state.clients||[]).reduce((a,c)=>{const r=(c.paiements||[]).filter(p=>p.recu).reduce((s,p)=>s+p.montant,0);return a+(c.prix-r);},0);
   document.getElementById('fin-treso').innerHTML=`<div class="depense-row"><span>Recettes encaissées</span><span style="color:var(--ok);font-weight:600">${recettes.toLocaleString('fr-FR')}€</span></div><div class="depense-row"><span>En attente</span><span style="color:var(--warn);font-weight:600">${enAtt.toLocaleString('fr-FR')}€</span></div><div class="depense-row"><span>Dépenses</span><span style="color:var(--alert);font-weight:600">-${depenses.toLocaleString('fr-FR')}€</span></div><div class="depense-row" style="border-top:2px solid var(--border);font-weight:700"><span>Solde</span><span style="color:${solde>=0?'var(--ok)':'var(--alert)'}">${solde.toLocaleString('fr-FR')}€</span></div>`;
+  // Solde Perso (compte courant Lilou à rembourser)
+  var persoTotal=(state.depenses||[]).filter(function(d){return d.categorie==='perso';}).reduce(function(a,d){return a+(parseFloat(d.montant)||0);},0);
+  var persoDiv=document.getElementById('dep-perso-solde');
+  if(persoDiv){
+    if(persoTotal>0){
+      persoDiv.style.display='block';
+      persoDiv.innerHTML='👤 Compte courant Lilou à rembourser : <strong>'+persoTotal.toLocaleString('fr-FR',{minimumFractionDigits:2})+'€</strong>';
+    } else {
+      persoDiv.style.display='none';
+    }
+  }
   var dl=document.getElementById('dep-list');
   if(dl){var deps=(state.depenses||[]).slice().sort(function(a,b){
       function toTs(d){if(!d)return 0;d=d.trim();var p;if(d.indexOf('/')>-1){p=d.split('/');return parseInt(p[2])*10000+parseInt(p[1])*100+parseInt(p[0]);}if(d.indexOf('-')>-1){p=d.split('-');return p[0].length===4?parseInt(p[0])*10000+parseInt(p[1])*100+parseInt(p[2]):parseInt(p[2])*10000+parseInt(p[1])*100+parseInt(p[0]);}return 0;}
       return toTs(b.date)-toTs(a.date);
-    });dl.innerHTML=!deps.length?'<p style="color:var(--muted);font-size:.83rem">Aucune dépense.</p>':deps.map(d=>`<div class="depense-row"><div><div style="font-size:.83rem;font-weight:600">${DEP_CAT[d.categorie]||d.categorie}</div><div style="font-size:.7rem;color:var(--muted)">${fmtShort(d.date)} · ${d.desc||''}</div></div><div style="display:flex;align-items:center;gap:.35rem"><span style="color:var(--alert);font-weight:700">-${parseFloat(d.montant).toLocaleString('fr-FR')}€</span><button class="btn btn-danger btn-sm" onclick="delDep('${d.id}')">✕</button></div></div>`).join('');}
+    });dl.innerHTML=!deps.length?'<p style="color:var(--muted);font-size:.83rem">Aucune dépense.</p>':deps.map(function(d){
+      var srcBadge=d.source==='releve'?'<span style="font-size:.62rem;background:#e8f4fd;color:#004085;padding:.1rem .3rem;border-radius:4px;margin-left:.3rem">relevé</span>':'';
+      return '<div class="depense-row"><div><div style="font-size:.83rem;font-weight:600">'+(DEP_CAT[d.categorie]||d.categorie)+srcBadge+'</div><div style="font-size:.7rem;color:var(--muted)">'+fmtShort(d.date)+' · '+(d.desc||'')+'</div></div><div style="display:flex;align-items:center;gap:.35rem"><span style="color:var(--alert);font-weight:700">-'+parseFloat(d.montant).toLocaleString('fr-FR')+'€</span><button class="btn btn-danger btn-sm" onclick="delDep(\''+d.id+'\')">✕</button></div></div>';
+    }).join('');}
   var rl=document.getElementById('rec-list');
   if(rl){rl.innerHTML=!(state.clients||[]).length?'<p style="color:var(--muted);font-size:.83rem">Aucune recette.</p>':(state.clients||[]).map(c=>{const r=(c.paiements||[]).filter(p=>p.recu).reduce((a,p)=>a+p.montant,0);return `<div class="depense-row"><div><div style="font-size:.83rem;font-weight:600">${c.prenom} ${c.nom}</div><div style="font-size:.7rem;color:var(--muted)">${c.paiement==='3fois'?'3x sans frais':'Comptant'}</div></div><div style="text-align:right"><div style="color:var(--ok);font-weight:700">${r.toLocaleString('fr-FR')}€</div><div style="font-size:.7rem;color:var(--muted)">/${(parseFloat(c.prix)||0).toLocaleString('fr-FR')}€</div></div></div>`;}).join('');}
 }
@@ -1760,6 +1777,245 @@ function saveDepense(){
   document.getElementById('d-montant').value='';document.getElementById('d-desc').value='';
 }
 function delDep(id){state.depenses=(state.depenses||[]).filter(d=>d.id!==id);saveState();renderFinance();}
+
+// ══════ IMPORT RELEVE BANCAIRE PDF ══════
+// Table de catégorisation par mots-clés (libellé en majuscules pour comparaison)
+var RELEVE_KEYWORDS=[
+  {keys:['DELBOUIS LAURENC','VIR PERSO','CPT COURANT LILOU'],cat:'perso'},
+  {keys:['MON VETO','SCP VETERINAIRE','UNIVET','CLINIQUE CEDRES','SELARL MOLITOR','PHARMACIE COEUR'],cat:'veterinaire'},
+  {keys:['PPG','PHARMACIE JAC','PHARMACIE DES JAC','JACOBINS'],cat:'vaccins'},
+  {keys:['ANIMO MIAM','MAXI ZOO','FRESSNAPF','ANIMALIA','JARDILAND'],cat:'nourriture'},
+  {keys:['GMF ASSURANCES','AXA FRANCE','AXA VIE','MACIF','MAAF'],cat:'administratif'},
+  {keys:['ORANGE SA','SFR ','BOUYGUES TELECOM','FREE ','EDF ','ENGIE','SUEZ'],cat:'charges'},
+  {keys:['AGC GASCOGNE','COTIS FORF','MSA MPS','MSA ','URSSAF','COMMISSION','FRAIS VIR','FRAIS INST','COTISATION'],cat:'administratif'},
+  {keys:['GIFI','CASTORAMA','TEDI','BRICO DEPOT','LEROY MERLIN','IKEA','MR BRICOLAGE'],cat:'equipement'},
+  {keys:['CARREFOUR CARBU','TOTAL ','ESSO ','BP ','SHELL ','INTERMARCHE CARBU'],cat:'transport'},
+  {keys:['DAC VL','RIVIERE PNEU','POINT S','INDIGO ','PARKING','AUTOROUTE','SAPRR','ESCOTA'],cat:'transport'},
+  {keys:['LEBONCOIN','COULON FLORIAN','ARTHUR KULAK','KULAK','CARREIRA ELIANE','ELIANE DES INDEPENDANTS'],cat:'fournitures'},
+  {keys:['CARREFOUR','INTERMARCHE','E.LECLERC','LECLERC','ALDI','LIDL','SUPER U','CASINO'],cat:'fournitures'},
+  {keys:['REPRO','SAILLIE','INSEMINATION'],cat:'repro'},
+  {keys:['TOILETTAGE','COIFFURE ANIMAUX'],cat:'toilettage'}
+];
+
+function _guessCat(libelle){
+  var up=libelle.toUpperCase();
+  for(var i=0;i<RELEVE_KEYWORDS.length;i++){
+    var rule=RELEVE_KEYWORDS[i];
+    for(var j=0;j<rule.keys.length;j++){
+      if(up.indexOf(rule.keys[j].toUpperCase())>-1) return rule.cat;
+    }
+  }
+  return 'autre';
+}
+
+function _parseDateFR(s){
+  // dd/mm/yyyy → yyyy-mm-dd pour input type=date
+  var p=s.split('/');
+  if(p.length===3) return p[2]+'-'+p[1]+'-'+p[0];
+  return s;
+}
+
+function _isDuplicate(date,montant,desc){
+  var deps=state.depenses||[];
+  var m=Math.round(parseFloat(montant)*100);
+  var d=_parseDateFR(date);
+  var up=(desc||'').toUpperCase().trim().substr(0,20);
+  for(var i=0;i<deps.length;i++){
+    var ex=deps[i];
+    var exM=Math.round(parseFloat(ex.montant)*100);
+    var exD=ex.date;
+    // normaliser date existante
+    if(exD&&exD.indexOf('/')>-1){var pp=exD.split('/');if(pp.length===3)exD=pp[2]+'-'+pp[1]+'-'+pp[0];}
+    var exUp=(ex.desc||'').toUpperCase().trim().substr(0,20);
+    if(exM===m&&exD===d&&exUp===up) return true;
+  }
+  return false;
+}
+
+// Lignes parsées en attente de validation
+window._releveLignes=[];
+
+function importerReleve(input){
+  if(!input.files||!input.files[0])return;
+  var file=input.files[0];
+  input.value=''; // reset pour repermission
+  // Utiliser FileReader + PDF.js pour extraire le texte
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var arrayBuffer=e.target.result;
+    _parsePdfReleve(arrayBuffer,file.name);
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function _parsePdfReleve(arrayBuffer,filename){
+  // Charger PDF.js depuis CDN si pas encore chargé
+  if(typeof pdfjsLib==='undefined'){
+    var script=document.createElement('script');
+    script.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    script.onload=function(){
+      pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      _doParsePdf(arrayBuffer,filename);
+    };
+    script.onerror=function(){_showReleveError('Impossible de charger le lecteur PDF. Vérifiez votre connexion internet.');};
+    document.head.appendChild(script);
+  } else {
+    _doParsePdf(arrayBuffer,filename);
+  }
+}
+
+function _doParsePdf(arrayBuffer,filename){
+  var loadingTask=pdfjsLib.getDocument({data:arrayBuffer});
+  loadingTask.promise.then(function(pdf){
+    var numPages=pdf.numPages;
+    var allTextPromises=[];
+    for(var p=1;p<=numPages;p++){
+      allTextPromises.push(pdf.getPage(p).then(function(page){
+        return page.getTextContent().then(function(tc){
+          // Reconstituer les lignes à partir des items en les triant par position Y
+          var items=tc.items;
+          // Grouper par ligne (Y proche)
+          var rows=[];
+          items.forEach(function(item){
+            var y=Math.round(item.transform[5]);
+            var found=false;
+            for(var r=0;r<rows.length;r++){
+              if(Math.abs(rows[r].y-y)<4){
+                rows[r].items.push(item);
+                found=true;break;
+              }
+            }
+            if(!found) rows.push({y:y,items:[item]});
+          });
+          // Trier rows du haut vers le bas (Y décroissant en PDF coords)
+          rows.sort(function(a,b){return b.y-a.y;});
+          // Construire le texte de chaque ligne trié par X
+          return rows.map(function(row){
+            row.items.sort(function(a,b){return a.transform[4]-b.transform[4];});
+            return row.items.map(function(i){return i.str;}).join(' ').replace(/\s+/g,' ').trim();
+          }).join('\n');
+        });
+      }));
+    }
+    Promise.all(allTextPromises).then(function(pages){
+      var fullText=pages.join('\n');
+      _traiterTexteReleve(fullText,filename);
+    }).catch(function(err){_showReleveError('Erreur lecture pages : '+err);});
+  }).catch(function(err){_showReleveError('Erreur lecture PDF : '+err);});
+}
+
+function _traiterTexteReleve(text,filename){
+  var lignes=text.split('\n');
+  // Regex : date valeur libellé montant
+  // Format Caisse d'Épargne : 03/09/2026  01/09/2026  LIBELLÉ   -111,37
+  var re=/^(\d{2}\/\d{2}\/\d{4})\s+\d{2}\/\d{2}\/\d{4}\s+(.+?)\s+([-+]?\s*\d[\d\s]*,\d{2})\s*$/;
+  var parsed=[];
+  lignes.forEach(function(l){
+    var m=l.match(re);
+    if(!m) return;
+    var date=m[1];
+    var libelle=m[2].trim().replace(/\s+/g,' ');
+    var montantStr=m[3].replace(/\s/g,'').replace(',','.');
+    var montant=parseFloat(montantStr);
+    if(isNaN(montant)) return;
+    // N'importer que les débits (montant négatif)
+    if(montant>=0) return;
+    var abs=Math.abs(montant);
+    var cat=_guessCat(libelle);
+    var dup=_isDuplicate(date,abs,libelle);
+    parsed.push({date:date,libelle:libelle,montant:abs,cat:cat,dup:dup});
+  });
+
+  if(!parsed.length){
+    _showReleveError('Aucune opération de débit trouvée dans ce PDF.\nVérifiez que c\'est bien un relevé Caisse d\'Épargne Pro.');
+    return;
+  }
+
+  window._releveLignes=parsed;
+  _afficherModalReleve(parsed,filename);
+}
+
+function _afficherModalReleve(lignes,filename){
+  var info=document.getElementById('releve-parse-info');
+  if(info) info.textContent=lignes.length+' débit(s) trouvé(s) dans '+filename+' — décochez les doublons ou crédits non voulus avant import.';
+
+  var wrap=document.getElementById('releve-lignes-wrap');
+  if(!wrap) return;
+
+  var catOptions=Object.keys(DEP_CAT).map(function(k){
+    return '<option value="'+k+'">'+DEP_CAT[k]+'</option>';
+  }).join('');
+
+  wrap.innerHTML=lignes.map(function(l,idx){
+    var checked=l.dup?'':'checked';
+    var dupBadge=l.dup?'<span class="releve-dup-badge">⚠️ Doublon</span>':'';
+    var rowCls=l.dup?'releve-ligne releve-dup':'releve-ligne';
+    var selHtml='<select class="releve-cat-sel" id="rcat-'+idx+'">'+catOptions+'</select>';
+    return '<div class="'+rowCls+'" id="rline-'+idx+'">'
+      +'<input type="checkbox" id="rchk-'+idx+'" '+checked+'>'
+      +'<div class="releve-ligne-info">'
+        +'<div style="font-weight:600;font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+l.libelle+' '+dupBadge+'</div>'
+        +'<div style="font-size:.7rem;color:var(--muted)">'+l.date+' · '+selHtml+'</div>'
+      +'</div>'
+      +'<span class="releve-ligne-montant">-'+l.montant.toLocaleString('fr-FR',{minimumFractionDigits:2})+'€</span>'
+      +'</div>';
+  }).join('');
+
+  // Pré-sélectionner la bonne catégorie
+  lignes.forEach(function(l,idx){
+    var sel=document.getElementById('rcat-'+idx);
+    if(sel) sel.value=l.cat;
+  });
+
+  var errDiv=document.getElementById('releve-parse-error');
+  if(errDiv) errDiv.style.display='none';
+
+  document.getElementById('modal-releve').classList.add('active');
+  document.getElementById('btn-valider-releve').onclick=_validerImportReleve;
+}
+
+function _showReleveError(msg){
+  var errDiv=document.getElementById('releve-parse-error');
+  if(errDiv){errDiv.textContent=msg;errDiv.style.display='block';}
+  document.getElementById('modal-releve').classList.add('active');
+}
+
+function toggleAllReleve(checked){
+  var lignes=window._releveLignes||[];
+  lignes.forEach(function(l,idx){
+    var chk=document.getElementById('rchk-'+idx);
+    if(chk) chk.checked=!!checked;
+  });
+}
+
+function _validerImportReleve(){
+  var lignes=window._releveLignes||[];
+  if(!state.depenses) state.depenses=[];
+  var nb=0;
+  lignes.forEach(function(l,idx){
+    var chk=document.getElementById('rchk-'+idx);
+    if(!chk||!chk.checked) return;
+    var sel=document.getElementById('rcat-'+idx);
+    var cat=sel?sel.value:(l.cat||'autre');
+    var dateISO=_parseDateFR(l.date);
+    // Vérifier doublon à nouveau au moment de l'import
+    if(_isDuplicate(l.date,l.montant,l.libelle)) return;
+    state.depenses.unshift({
+      id:Date.now().toString()+(Math.random()*1000|0),
+      categorie:cat,
+      montant:l.montant,
+      date:dateISO,
+      desc:l.libelle,
+      source:'releve'
+    });
+    nb++;
+  });
+  saveState();
+  document.getElementById('modal-releve').classList.remove('active');
+  window._releveLignes=[];
+  renderFinance();
+  toast('✅ '+nb+' dépense(s) importée(s) depuis le relevé');
+}
 
 // ══════ OUTILS ══════
 function renderOutils(){renderOutilsLive();renderMessages();renderArdoise();renderReports();renderTaskMgr();renderPeriodics();renderAccounts();const ec=document.getElementById('email-cfg');if(ec)ec.value=state.emailConfig||'';}
@@ -2481,156 +2737,6 @@ function generateContrat(clientId){
   else toast('Autorisez les popups pour ce site');
 }
 
-// ══════ CONTRAT WORD (.rtf) ══════
-function rtfEsc(s){
-  s=(s===undefined||s===null)?'':String(s);
-  var out='';
-  for(var i=0;i<s.length;i++){
-    var ch=s.charAt(i);
-    var code=s.charCodeAt(i);
-    if(ch==='\\'||ch==='{'||ch==='}'){out+='\\'+ch;}
-    else if(code>126){var v=code>32767?code-65536:code;out+='\\u'+v+'?';}
-    else{out+=ch;}
-  }
-  return out;
-}
-function rtfPar(text,bold,center){
-  var s='\\pard';
-  if(center)s+='\\qc';
-  s+=' ';
-  if(bold)s+='{\\b '+rtfEsc(text)+'}';
-  else s+=rtfEsc(text);
-  s+='\\par\n';
-  return s;
-}
-function rtfHeading(text){return '\\pard\\sb220\\sa60 {\\b\\fs22 '+rtfEsc(text)+'}\\par\n';}
-function rtfBullet(text){return '\\pard\\li360\\fi-200 {\\bullet}\\tab '+rtfEsc(text)+'\\par\n';}
-function rtfRow2(label,value){
-  return '\\trowd\\trgaph80\\trleft0'
-    +'\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx3600'
-    +'\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx9500'
-    +'\\pard\\intbl {\\b '+rtfEsc(label)+'}\\cell '+rtfEsc(value)+'\\cell\\row\n';
-}
-function rtfRow3(a,b,c,header){
-  var o1=header?'{\\b ':'{';var o2='}';
-  return '\\trowd\\trgaph80\\trleft0'
-    +'\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx3500'
-    +'\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx6300'
-    +'\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx9500'
-    +'\\pard\\intbl '+o1+rtfEsc(a)+o2+'\\cell '+o1+rtfEsc(b)+o2+'\\cell '+o1+rtfEsc(c)+o2+'\\cell\\row\n';
-}
-function generateContratWord(clientId){
-  var c=(state.clients||[]).find(function(x){return x.id===clientId;});
-  if(!c){toast('Client introuvable');return;}
-  var chiot=null;var portee=null;
-  (state.portees||[]).forEach(function(p){(p.chiots||[]).forEach(function(ch){if(ch.id===c.chiot){chiot=ch;portee=p;}});});
-  var nomChiot=chiot?(chiot.nomClient||chiot.codeProvisoire):'...';
-  var nomDef=nomChiot+" de L'Or\u00e9e des Moonskys";
-  var dateAuj=new Date().toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
-  var sexeTxt=chiot?(chiot.sexe==='M'?'m\u00e2le':'femelle'):'non pr\u00e9cis\u00e9';
-  var robe=chiot?(chiot.robe||'non pr\u00e9cis\u00e9'):'non pr\u00e9cis\u00e9';
-  var mere=portee?(portee.femelle+" de L'Or\u00e9e des Moonskys"):'non pr\u00e9cis\u00e9';
-  var pere=portee?portee.male:'non pr\u00e9cis\u00e9';
-  var naiss=portee?fmtShort(portee.naissance):'non pr\u00e9cis\u00e9';
-  var puce=chiot?(chiot.puce||'en attente'):'en attente';
-  var prix=c.prix||0;
-
-  var rtf='{\\rtf1\\ansi\\ansicpg1252\\deff0\\deflang1036{\\fonttbl{\\f0\\froman Georgia;}}\n\\viewkind4\\uc1\\pard\\f0\\fs20\n';
-
-  rtf+=rtfPar("L'Or\u00e9e des Moonskys",true,true);
-  rtf+=rtfPar("46 chemin du Ribarot, 31700 Daux \u2014 \u00c9levage de Pomsky \u0153uvrant \u00e0 la reconnaissance de cette nouvelle race",false,true);
-  rtf+='\\pard\\sb200\\sa60\\qc {\\b\\fs24 CONTRAT DE VENTE D\'UN CHIOT/CHIEN DE TYPE POMSKY}\\par\n';
-  rtf+='\\pard\\sa220\\qc {\\i valant attestation de cession (chien destin\u00e9 \u00e0 la compagnie)}\\par\n';
-
-  rtf+=rtfHeading('LE VENDEUR');
-  rtf+=rtfPar('Madame DELBOUIS Laurence');
-  rtf+=rtfPar('46 chemin du Ribarot, 31700 DAUX');
-  rtf+=rtfPar('T\u00e9l : 06-08-84-75-89 \u2014 laurencebabb@gmail.com');
-  rtf+=rtfPar('SIRET : 82194514400011');
-
-  rtf+=rtfHeading("L'ACQU\u00c9REUR");
-  rtf+=rtfPar((c.prenom||'')+' '+(c.nom||''),true);
-  rtf+=rtfPar(c.adresse||'\u2014');
-  rtf+=rtfPar('T\u00e9l : '+(c.tel||'\u2014')+' \u2014 '+(c.email||'\u2014'));
-  rtf+=rtfPar('ci-apr\u00e8s d\u00e9nomm\u00e9 \u00ab l\'acqu\u00e9reur \u00bb, qui se d\u00e9clare en qualit\u00e9 de consommateur ou non-professionnel.');
-
-  rtf+=rtfHeading('Art. 1 \u2014 Cession & Livraison');
-  rtf+=rtfPar('Par les pr\u00e9sentes, le vendeur c\u00e8de et livre ce jour le '+dateAuj+' \u00e0 Daux (31) :');
-  rtf+=rtfRow2('Date de cession',dateAuj+' \u00e0 Daux (31)');
-  rtf+=rtfRow2('Race','Pomsky');
-  rtf+=rtfRow2('Date de naissance',naiss);
-  rtf+=rtfRow2('Sexe',sexeTxt);
-  rtf+=rtfRow2('Robe',robe);
-  rtf+=rtfRow2('Nom',nomDef);
-  rtf+=rtfRow2('Puce \u00e9lectronique',puce);
-  rtf+=rtfRow2('M\u00e8re',mere);
-  rtf+=rtfRow2('P\u00e8re',pere);
-  rtf+='\\pard\\sb120 \n';
-  rtf+=rtfPar("L'Acqu\u00e9reur s'engage \u00e0 d\u00e9tenir l'animal dans des conditions compatibles avec ses besoins biologiques et comportementaux et \u00e0 lui donner des soins attentifs conform\u00e9ment aux articles L.214-1 \u00e0 L.214-3 du Code rural et de la p\u00eache maritime.");
-
-  rtf+=rtfHeading('Art. 2 \u2014 Destination du chiot');
-  rtf+=rtfPar("Le chiot est c\u00e9d\u00e9 \u00e0 titre d'animal de compagnie et est, de convention expresse entre les parties, destin\u00e9 exclusivement \u00e0 cet usage. Il s'agit d'une condition d\u00e9terminante du consentement du vendeur, sans laquelle il n'aurait pas contract\u00e9.");
-  rtf+=rtfPar('\u00a8 Option cession \u00e0 l\'\u00e9tat st\u00e9rilis\u00e9 : le chien c\u00e9d\u00e9 est d\u00e9j\u00e0 st\u00e9rilis\u00e9.');
-  rtf+=rtfPar("X Option obligation de st\u00e9rilisation : L'acheteur devra faire st\u00e9riliser le chiot \u00e0 partir de l'\u00e2ge de 6 mois et avant celui de 12 mois et en justifier au vendeur par un certificat v\u00e9t\u00e9rinaire, sous peine de perdre la ristourne pr\u00e9vue \u00e0 l'article 4. Sous la m\u00eame peine, il ne pourra c\u00e9der \u00e0 un tiers l'animal avant qu'il ne soit st\u00e9rilis\u00e9.");
-
-  rtf+=rtfHeading('Art. 3 \u2014 Garantie');
-  rtf+=rtfPar('La pr\u00e9sente vente est soumise uniquement \u00e0 la garantie des vices r\u00e9dhibitoires pr\u00e9vue aux articles L. 213-1 et suivants du Code Rural et de la P\u00eache Maritime, \u00e0 l\'exclusion de la garantie des vices cach\u00e9s de droit commun \u00e9dict\u00e9e \u00e0 l\'article 1641 du code civil.');
-  rtf+=rtfPar("Il appartient \u00e0 l'acheteur de prendre certaines pr\u00e9cautions au cours de la croissance du chiot jusqu'\u00e0 12 mois afin de ne pas cr\u00e9er des facteurs favorisant l'apparition d'affections orthop\u00e9diques :");
-  rtf+=rtfBullet("Pas de longues promenades (sorties de 10 \u00e0 15 minutes jusqu'\u00e0 6 mois, une heure par semaine entre 6 et 12 mois)");
-  rtf+=rtfBullet('\u00c9viter de faire galoper le chiot (le trot est plus conseill\u00e9)');
-  rtf+=rtfBullet("Pas de saut, \u00e9viter les mont\u00e9es ou descentes d'escaliers");
-  rtf+=rtfBullet('\u00c9viter le surpoids \u2014 nourrir exclusivement avec des aliments PREMIUM (PRO PLAN PUPPY ou ROYAL CANIN MEDIUM PUPPY)');
-  rtf+=rtfBullet('Pas de grignotage ou de nourriture \u00e0 volont\u00e9');
-  if(chiot&&chiot.sexe==='M'){
-    rtf+=rtfPar("S'il acqu\u00e9rit un chiot m\u00e2le, l'acheteur reconna\u00eet avoir \u00e9t\u00e9 inform\u00e9 qu'en d\u00e9pit d'une descente normale dans le scrotum aux alentours de 6 semaines, les testicules peuvent remonter jusqu'\u00e0 l'\u00e2ge de six mois. L'acqu\u00e9reur d\u00e9clare renoncer \u00e0 toute r\u00e9clamation, recours ou action, en cas d'ectopie testiculaire.");
-  }
-
-  rtf+=rtfHeading('Art. 4 \u2014 Prix');
-  rtf+=rtfPar("Afin d'\u00e9viter que ses chiens ne se retrouvent impliqu\u00e9s dans des mariages inopportuns, proscrits, ou susceptibles de g\u00e9n\u00e9rer des sujets de mauvaise qualit\u00e9, ce qui nuirait \u00e0 la r\u00e9putation de son \u00e9levage et \u00e0 la lign\u00e9e cr\u00e9\u00e9s par le vendeur, il est d\u00e9terminant du consentement de ce dernier, sans quoi il n'aurait pas contract\u00e9, que le chiot c\u00e9d\u00e9 par les pr\u00e9sentes soit exclusivement destin\u00e9 \u00e0 la compagnie, m\u00eame si l'option st\u00e9rilisation n'a pas \u00e9t\u00e9 coch\u00e9e, ce \u00e0 quoi s'oblige l'acqu\u00e9reur, en contrepartie d'une ristourne de deux mille euros, 2\u00a0000\u20ac (ch\u00e8que de ristourne en attente et non encaiss\u00e9), sur le prix de vente fix\u00e9 \u00e0 "+(prix+2000)+'\u20ac nt TVA 20%.');
-  rtf+=rtfRow2('Prix de vente total (ch\u00e8que ristourne inclus)',(prix+2000)+'\u20ac');
-  rtf+=rtfRow2('Dont ristourne st\u00e9rilisation (ch\u00e8que non encaiss\u00e9)','2\u00a0000\u20ac');
-  rtf+=rtfRow2('Prix net hors ristourne',prix+'\u20ac');
-  rtf+='\\pard\\sb120 \n';
-  rtf+=rtfPar('Sur pr\u00e9sentation du certificat de st\u00e9rilisation r\u00e9alis\u00e9e dans le d\u00e9lai imparti \u00e0 l\'article 2 des pr\u00e9sentes, le vendeur renverra \u00e0 l\'acheteur la ristourne qui sera acquise de droit.');
-  rtf+=rtfPar("Pass\u00e9 le d\u00e9lai imparti \u00e0 l'article 2, si les termes n'ont pas \u00e9t\u00e9 respect\u00e9s, l'acqu\u00e9reur devra s'acquitter du paiement de la ristourne, soit 2\u00a0000\u20ac.");
-
-  rtf+=rtfHeading('Art. 5 \u2014 Paiement & R\u00e9serve de propri\u00e9t\u00e9');
-  rtf+=rtfPar('Le prix convenu, apr\u00e8s \u00e9ventuelle r\u00e9duction, a \u00e9t\u00e9 pay\u00e9 par '+(c.paiements||[]).length+' versement(s) :');
-  rtf+=rtfRow3('Versement','Montant','Statut',true);
-  (c.paiements||[]).forEach(function(p){
-    rtf+=rtfRow3(p.label,p.montant+'\u20ac',p.recu?('\u2713 Re\u00e7u le '+p.date):'En attente');
-  });
-  rtf+='\\pard\\sb120 \n';
-  rtf+=rtfPar('La pr\u00e9sente vente est soumise \u00e0 une clause de r\u00e9serve de propri\u00e9t\u00e9. Le chien reste la propri\u00e9t\u00e9 du vendeur jusqu\'\u00e0 paiement int\u00e9gral et effectif du prix convenu. Chaque jour de retard g\u00e9n\u00e8re un int\u00e9r\u00eat journalier de dix euros (10\u20ac).');
-
-  rtf+=rtfHeading('Art. 6 \u2014 Documents remis');
-  rtf+=rtfPar("L'acqu\u00e9reur soussign\u00e9 reconna\u00eet avoir re\u00e7u ce jour :");
-  rtf+=rtfPar('Attestation de cession \u2022 Document d\'information sur les caract\u00e9ristiques de l\'animal \u2022 Certificat I-CAD \u2022 Carnet ou passeport EU de vaccination \u2022 Certificat v\u00e9t\u00e9rinaire avant cession');
-
-  rtf+=rtfHeading('Art. 7 \u2014 M\u00e9diation');
-  rtf+=rtfPar('Le vendeur rel\u00e8ve du m\u00e9diateur de la consommation, Monsieur Yves LEGEAY, demeurant 22 Boulevard A. Millerand, 44000 Nantes.');
-
-  rtf+=rtfHeading('Art. 8 \u2014 Nationalit\u00e9 du contrat');
-  rtf+=rtfPar('Le pr\u00e9sent contrat est de droit fran\u00e7ais exclusivement et rel\u00e8vera des juridictions fran\u00e7aises uniquement.');
-
-  rtf+='\\pard\\sb300\\sa300\\qc {\\i Fait \u00e0 DAUX, le '+rtfEsc(dateAuj)+', en deux exemplaires.}\\par\n';
-  rtf+=rtfRow2('Le vendeur','Laurence DELBOUIS');
-  rtf+=rtfRow2("L'acqu\u00e9reur",(c.prenom||'')+' '+(c.nom||''));
-  rtf+='\\pard\\sb300\\qc\\fs16 {\\i \u00c9levage de Pomsky \u0153uvrant \u00e0 la reconnaissance de cette nouvelle race \u2014 L\'Or\u00e9e des Moonskys \u2014 46 chemin du Ribarot 31700 Daux}\\par\n';
-  rtf+='}';
-
-  var blob=new Blob([rtf],{type:'application/rtf'});
-  var blobUrl=URL.createObjectURL(blob);
-  var a=document.createElement('a');
-  a.href=blobUrl;
-  a.download='Contrat-'+(c.prenom||'client')+'-'+(c.nom||'')+'.rtf';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(function(){URL.revokeObjectURL(blobUrl);},4000);
-  toast('📝 Contrat Word téléchargé — ouvrez-le pour le personnaliser');
-}
-
 function generateCertifFromFamille(clientId){
   var c=(state.clients||[]).find(function(x){return x.id===clientId;});
   if(!c){toast('Client introuvable');return;}
@@ -2666,29 +2772,173 @@ function updateAcomptePreview(){
   var prix=parseFloat(document.getElementById('c-prix').value)||0;
   var acEl=document.getElementById('c-acompte');
   if(acEl&&!acEl.value&&prix>0){
-    acEl.placeholder='Suggéré : '+Math.round(prix*0.30)+'€ (30%)';
+    acEl.placeholder='Auto : '+Math.round(prix*0.30)+'€ (30%)';
   }
   updatePaiements();
 }
 
+// Recalcul principal déclenché par prix, acompte ou mode
 function updatePaiements(){
   var prix=parseFloat(document.getElementById('c-prix').value)||0;
   var acEl=document.getElementById('c-acompte');
-  var acompte=acEl&&acEl.value?parseFloat(acEl.value):Math.round(prix*0.30);
+  var v1El=document.getElementById('c-v1');
+  var v2El=document.getElementById('c-v2');
+  var v3El=document.getElementById('c-v3');
   var mode=document.getElementById('c-paiement').value;
-  var prev=document.getElementById('paiement-preview');
-  if(!prev||!prix)return;
-  var solde=prix-acompte;
-  var txt='';
-  if(mode==='3fois'){
-    var v2=Math.round(solde/2);
-    var v3=solde-v2;
-    txt='Acompte: <strong>'+acompte+'€</strong> · Virement 2: <strong>'+v2+'€</strong> · Solde: <strong>'+v3+'€</strong> · Total: <strong>'+prix+'€</strong>';
-  } else {
-    txt='Acompte: <strong>'+acompte+'€</strong> · Solde: <strong>'+solde+'€</strong> · Total: <strong>'+prix+'€</strong>';
+  if(!prix){
+    var prev=document.getElementById('paiement-preview');
+    if(prev)prev.innerHTML='';
+    return;
   }
-  prev.innerHTML=txt;
-  prev.style.display='block';
+  var acompte=acEl&&acEl.value?parseFloat(acEl.value):Math.round(prix*0.30);
+  if(acEl&&!acEl.value) acEl.placeholder='Auto : '+acompte+'€';
+  var solde=Math.max(0,prix-acompte);
+  // Si acompte couvre tout, V1/V2/V3 → 0
+  if(solde<=0){
+    if(v1El){v1El.value='';v1El.placeholder='0';}
+    if(v2El){v2El.value='';v2El.placeholder='0';}
+    if(v3El){v3El.value='';v3El.placeholder='0';}
+    _renderPaiementPreview(prix,acompte,0,0,0,mode);
+    return;
+  }
+  var v1=v1El&&v1El.value?parseFloat(v1El.value):0;
+  var v2=v2El&&v2El.value?parseFloat(v2El.value):0;
+  var v3=v3El&&v3El.value?parseFloat(v3El.value):0;
+  // Calcul auto selon mode
+  if(mode==='comptant'){
+    v1=0;v2=0;v3=0;
+    if(v1El){v1El.value='';v1El.placeholder='0';}
+    if(v2El){v2El.value='';v2El.placeholder='0';}
+    if(v3El){v3El.value='';v3El.placeholder='0';}
+  } else if(mode==='2fois'){
+    if(!v1) v1=solde;
+    v2=0;v3=0;
+    if(v1El&&!v1El.value) v1El.placeholder=v1+'€';
+    if(v2El){v2El.value='';v2El.placeholder='0';}
+    if(v3El){v3El.value='';v3El.placeholder='0';}
+  } else if(mode==='3fois'){
+    if(!v1) v1=Math.round(solde/2);
+    var reste1=Math.max(0,solde-v1);
+    // Si V1 couvre tout
+    if(reste1<=0){
+      v2=0;v3=0;
+      if(v2El){v2El.value='';v2El.placeholder='0';}
+      if(v3El){v3El.value='';v3El.placeholder='0';}
+    } else {
+      if(!v2) v2=reste1;
+      v3=0;
+      if(v1El&&!v1El.value) v1El.placeholder=v1+'€';
+      if(v2El&&!v2El.value) v2El.placeholder=v2+'€';
+      if(v3El){v3El.value='';v3El.placeholder='0';}
+    }
+  } else if(mode==='4fois'){
+    if(!v1) v1=Math.round(solde/3);
+    var reste1=Math.max(0,solde-v1);
+    if(reste1<=0){
+      v2=0;v3=0;
+      if(v2El){v2El.value='';v2El.placeholder='0';}
+      if(v3El){v3El.value='';v3El.placeholder='0';}
+    } else {
+      if(!v2) v2=Math.round(reste1/2);
+      var reste2=Math.max(0,reste1-v2);
+      if(reste2<=0){
+        v3=0;
+        if(v3El){v3El.value='';v3El.placeholder='0';}
+      } else {
+        if(!v3) v3=reste2;
+        if(v3El&&!v3El.value) v3El.placeholder=v3+'€';
+      }
+      if(v1El&&!v1El.value) v1El.placeholder=v1+'€';
+      if(v2El&&!v2El.value) v2El.placeholder=v2+'€';
+    }
+  }
+  _renderPaiementPreview(prix,acompte,v1,v2,v3,mode);
+}
+
+function updatePaiementsFromV1(){
+  var prix=parseFloat(document.getElementById('c-prix').value)||0;
+  var acEl=document.getElementById('c-acompte');
+  var acompte=acEl&&acEl.value?parseFloat(acEl.value):Math.round(prix*0.30);
+  var v1El=document.getElementById('c-v1');
+  var v2El=document.getElementById('c-v2');
+  var v3El=document.getElementById('c-v3');
+  var mode=document.getElementById('c-paiement').value;
+  var v1=v1El&&v1El.value?parseFloat(v1El.value):0;
+  var solde=Math.max(0,prix-acompte);
+  var reste1=Math.max(0,solde-v1);
+  if(reste1<=0){
+    // V1 solde tout
+    if(v2El){v2El.value='';v2El.placeholder='0';}
+    if(v3El){v3El.value='';v3El.placeholder='0';}
+    _renderPaiementPreview(prix,acompte,v1,0,0,mode);
+  } else if(mode==='4fois'){
+    var v2=v2El&&v2El.value?parseFloat(v2El.value):Math.round(reste1/2);
+    var v3=Math.max(0,reste1-v2);
+    if(v2El&&!v2El.value) v2El.placeholder=v2+'€';
+    if(v3El&&!v3El.value) v3El.placeholder=v3+'€';
+    _renderPaiementPreview(prix,acompte,v1,v2,v3,mode);
+  } else {
+    var v2=reste1;
+    if(v2El&&!v2El.value) v2El.placeholder=v2+'€';
+    if(v3El){v3El.value='';v3El.placeholder='0';}
+    _renderPaiementPreview(prix,acompte,v1,v2,0,mode);
+  }
+}
+
+function updatePaiementsFromV2(){
+  var prix=parseFloat(document.getElementById('c-prix').value)||0;
+  var acEl=document.getElementById('c-acompte');
+  var acompte=acEl&&acEl.value?parseFloat(acEl.value):Math.round(prix*0.30);
+  var v1El=document.getElementById('c-v1');
+  var v2El=document.getElementById('c-v2');
+  var v3El=document.getElementById('c-v3');
+  var mode=document.getElementById('c-paiement').value;
+  var solde=Math.max(0,prix-acompte);
+  var v1=v1El&&v1El.value?parseFloat(v1El.value):Math.round(solde/(mode==='4fois'?3:2));
+  var v2=v2El&&v2El.value?parseFloat(v2El.value):0;
+  var reste2=Math.max(0,solde-v1-v2);
+  if(reste2<=0){
+    if(v3El){v3El.value='';v3El.placeholder='0';}
+    _renderPaiementPreview(prix,acompte,v1,v2,0,mode);
+  } else if(mode==='4fois'){
+    if(v3El&&!v3El.value) v3El.placeholder=reste2+'€';
+    _renderPaiementPreview(prix,acompte,v1,v2,reste2,mode);
+  } else {
+    _renderPaiementPreview(prix,acompte,v1,v2,0,mode);
+  }
+}
+
+function updatePaiementsFromV3(){
+  var prix=parseFloat(document.getElementById('c-prix').value)||0;
+  var acEl=document.getElementById('c-acompte');
+  var acompte=acEl&&acEl.value?parseFloat(acEl.value):Math.round(prix*0.30);
+  var v1El=document.getElementById('c-v1');
+  var v2El=document.getElementById('c-v2');
+  var v3El=document.getElementById('c-v3');
+  var mode=document.getElementById('c-paiement').value;
+  var solde=Math.max(0,prix-acompte);
+  var v1=v1El&&v1El.value?parseFloat(v1El.value):Math.round(solde/3);
+  var v2=v2El&&v2El.value?parseFloat(v2El.value):Math.round((solde-v1)/2);
+  var v3=v3El&&v3El.value?parseFloat(v3El.value):0;
+  _renderPaiementPreview(prix,acompte,v1,v2,v3,mode);
+}
+
+function _renderPaiementPreview(prix,acompte,v1,v2,v3,mode){
+  var prev=document.getElementById('paiement-preview');
+  if(!prev)return;
+  var total=acompte+(v1||0)+(v2||0)+(v3||0);
+  var ok=Math.abs(total-prix)<1;
+  var color=ok?'var(--ok)':'#e67e22';
+  var parts=['<span>Acompte&nbsp;: <strong>'+acompte+'€</strong></span>'];
+  if(mode==='2fois'&&v1) parts.push('<span>Versement&nbsp;1&nbsp;: <strong>'+v1+'€</strong></span>');
+  if(mode==='3fois'||mode==='4fois'){
+    if(v1) parts.push('<span>V1&nbsp;: <strong>'+v1+'€</strong></span>');
+    if(v2) parts.push('<span>V2&nbsp;: <strong>'+v2+'€</strong></span>');
+    if(mode==='4fois'&&v3) parts.push('<span>V3&nbsp;: <strong>'+v3+'€</strong></span>');
+  }
+  if(mode==='comptant'&&(prix-acompte)>0) parts.push('<span>Solde&nbsp;: <strong>'+(prix-acompte)+'€</strong></span>');
+  parts.push('<span style="color:'+color+'">Total&nbsp;: <strong>'+total+'€/'+prix+'€</strong></span>');
+  prev.innerHTML=parts.join(' · ');
 }
 
 function cancelAnimalEdit(){
