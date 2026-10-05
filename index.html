@@ -228,7 +228,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.7a.71 — 05 oct 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a.73 — 05 oct 2026</p>
     </div>
   </div>
 </div>
@@ -361,8 +361,21 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
         <button class="mod-tab active" data-sub="crm-liste">👨‍👩‍👧 Familles</button>
         <button class="mod-tab" data-sub="crm-new" onclick="_editingClientId=null">➕ Nouvelle famille</button>
         <button class="mod-tab" data-sub="crm-actions">✅ Actions com.</button>
+        <button class="mod-tab" data-sub="crm-bilan" onclick="renderBilanMensuel()">📊 Bilan mensuel</button>
       </div>
       <div id="crm-liste" class="subtab active"><div id="crm-container"></div></div>
+      <div id="crm-bilan" class="subtab">
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem;margin-bottom:.9rem">
+            <h2>📊 État des paiements — fin de mois</h2>
+            <div style="display:flex;gap:.5rem;align-items:center">
+              <select id="bilan-mois" onchange="renderBilanMensuel()" style="padding:.35rem .65rem;border:1.5px solid var(--border);border-radius:8px;font-size:.82rem;background:var(--cream);color:var(--text)"></select>
+              <button class="btn btn-sm btn-secondary" onclick="exportBilanCSV()">⬇️ CSV</button>
+            </div>
+          </div>
+          <div id="bilan-mensuel-content"></div>
+        </div>
+      </div>
       <div id="crm-new" class="subtab">
         <div class="card">
           <h2 style="margin-bottom:.8rem">Nouvelle fiche famille</h2>
@@ -1728,6 +1741,197 @@ function markSterilRecu(cid){const c=(state.clients||[]).find(x=>x.id===cid);if(
 function markSterilRendu(cid){const c=(state.clients||[]).find(x=>x.id===cid);if(c&&c.chequeSteril){c.chequeSteril.rendu=true;saveState();openClientModal(cid);toast('✅ Chèque rendu/détruit');}}
 function delClient(){if(!state.selClient)return;if(!confirm('Supprimer ce dossier ?'))return;state.clients=(state.clients||[]).filter(x=>x.id!==state.selClient);saveState();closeM('modal-client');renderCRM();toast('🗑️ Supprimé');}
 
+// ══════ BILAN MENSUEL PAIEMENTS ══════
+function _initBilanMoisSelect(){
+  var sel=document.getElementById('bilan-mois');
+  if(!sel)return;
+  // Construire la liste des mois à partir des paiements reçus + mois courant
+  var moisSet={};
+  var now=new Date();
+  // Inclure les 12 derniers mois
+  for(var m=0;m<12;m++){
+    var d=new Date(now.getFullYear(),now.getMonth()-m,1);
+    var key=d.getFullYear()+'-'+(d.getMonth()<9?'0':'')+(d.getMonth()+1);
+    moisSet[key]=1;
+  }
+  // Inclure les mois avec des paiements reçus
+  (state.clients||[]).forEach(function(c){
+    (c.paiements||[]).forEach(function(p){
+      if(p.recu&&p.date){
+        // date format dd/mm/yyyy
+        var parts=p.date.split('/');
+        if(parts.length===3){
+          var key=parts[2]+'-'+parts[1];
+          moisSet[key]=1;
+        }
+      }
+    });
+  });
+  var moisList=Object.keys(moisSet).sort().reverse();
+  var curVal=sel.value;
+  sel.innerHTML=moisList.map(function(m){
+    var parts=m.split('-');
+    var label=new Date(parseInt(parts[0]),parseInt(parts[1])-1,1).toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+    label=label.charAt(0).toUpperCase()+label.slice(1);
+    return '<option value="'+m+'"'+(m===curVal?' selected':'')+'>'+label+'</option>';
+  }).join('');
+  // Sélectionner le mois courant par défaut si rien sélectionné
+  if(!curVal){
+    var defKey=now.getFullYear()+'-'+(now.getMonth()<9?'0':'')+(now.getMonth()+1);
+    sel.value=defKey;
+  }
+}
+
+function renderBilanMensuel(){
+  _initBilanMoisSelect();
+  var sel=document.getElementById('bilan-mois');
+  var mois=sel?sel.value:'';
+  var el=document.getElementById('bilan-mensuel-content');
+  if(!el)return;
+  if(!mois){el.innerHTML='<p style="color:var(--muted);font-size:.83rem">Sélectionnez un mois.</p>';return;}
+
+  var parts=mois.split('-');
+  var annee=parseInt(parts[0]);
+  var moisNum=parseInt(parts[1]);
+
+  var clients=state.clients||[];
+  if(!clients.length){el.innerHTML='<p style="color:var(--muted);font-size:.83rem">Aucune famille enregistrée.</p>';return;}
+
+  // Pour chaque client : calculer total dû, reçu ce mois, reçu total, reste
+  var rows=[];
+  var totDu=0,totRecuMois=0,totRecuTotal=0,totReste=0;
+
+  clients.forEach(function(c){
+    var paiements=c.paiements||[];
+    var du=parseFloat(c.prix)||0;
+    var recuMois=0;
+    var recuTotal=0;
+    var detailMois=[];
+
+    paiements.forEach(function(p){
+      if(p.recu){
+        recuTotal+=parseFloat(p.montant)||0;
+        // Vérifier si reçu ce mois
+        if(p.date){
+          var dp=p.date.split('/');
+          if(dp.length===3&&parseInt(dp[2])===annee&&parseInt(dp[1])===moisNum){
+            recuMois+=parseFloat(p.montant)||0;
+            detailMois.push(p.label+' '+p.montant+'€');
+          }
+        }
+      }
+    });
+
+    var reste=du-recuTotal;
+    var statut=reste<=0?'soldé':(recuTotal===0?'aucun':'partiel');
+
+    totDu+=du;
+    totRecuMois+=recuMois;
+    totRecuTotal+=recuTotal;
+    totReste+=Math.max(0,reste);
+
+    rows.push({c:c,du:du,recuMois:recuMois,recuTotal:recuTotal,reste:Math.max(0,reste),statut:statut,detailMois:detailMois});
+  });
+
+  // Trier : soldés en bas, reste élevé en haut
+  rows.sort(function(a,b){
+    if(a.statut==='soldé'&&b.statut!=='soldé')return 1;
+    if(b.statut==='soldé'&&a.statut!=='soldé')return -1;
+    return b.reste-a.reste;
+  });
+
+  var statutBadge=function(s){
+    if(s==='soldé') return '<span style="background:#d4edda;color:#155724;padding:.15rem .5rem;border-radius:10px;font-size:.7rem;font-weight:700">✓ Soldé</span>';
+    if(s==='aucun') return '<span style="background:#f8d7da;color:#721c24;padding:.15rem .5rem;border-radius:10px;font-size:.7rem;font-weight:700">⚠ Aucun</span>';
+    return '<span style="background:#fff3cd;color:#856404;padding:.15rem .5rem;border-radius:10px;font-size:.7rem;font-weight:700">⏳ Partiel</span>';
+  };
+
+  var html='<div style="overflow-x:auto">'
+    +'<table style="width:100%;border-collapse:collapse;font-size:.8rem">'
+    +'<thead><tr style="background:var(--forest);color:white">'
+    +'<th style="padding:.5rem .7rem;text-align:left;font-weight:600">Client</th>'
+    +'<th style="padding:.5rem .7rem;text-align:right;font-weight:600">Total dû</th>'
+    +'<th style="padding:.5rem .7rem;text-align:right;font-weight:600">Reçu ce mois</th>'
+    +'<th style="padding:.5rem .7rem;text-align:right;font-weight:600">Reçu total</th>'
+    +'<th style="padding:.5rem .7rem;text-align:right;font-weight:600">Reste</th>'
+    +'<th style="padding:.5rem .7rem;text-align:center;font-weight:600">Statut</th>'
+    +'</tr></thead><tbody>';
+
+  rows.forEach(function(r,i){
+    var bg=i%2===0?'var(--white)':'var(--cream)';
+    var resteStyle=r.reste>0?'color:var(--alert);font-weight:700':'color:var(--ok)';
+    var detailHtml=r.detailMois.length?'<div style="font-size:.68rem;color:var(--moss);margin-top:.15rem">'+r.detailMois.join(', ')+'</div>':'';
+    html+='<tr style="background:'+bg+';border-bottom:1px solid var(--border)">'
+      +'<td style="padding:.5rem .7rem"><span style="font-weight:600">'+r.c.prenom+' '+r.c.nom+'</span>'
+      +(r.c.depart?'<div style="font-size:.68rem;color:var(--muted)">Départ : '+fmtShort(r.c.depart)+'</div>':'')+'</td>'
+      +'<td style="padding:.5rem .7rem;text-align:right;font-weight:600">'+r.du.toLocaleString('fr-FR')+'€</td>'
+      +'<td style="padding:.5rem .7rem;text-align:right">'+(r.recuMois>0?'<span style="color:var(--ok);font-weight:700">+'+r.recuMois.toLocaleString('fr-FR')+'€</span>':'—')+detailHtml+'</td>'
+      +'<td style="padding:.5rem .7rem;text-align:right">'+r.recuTotal.toLocaleString('fr-FR')+'€</td>'
+      +'<td style="padding:.5rem .7rem;text-align:right"><span style="'+resteStyle+'">'+(r.reste>0?r.reste.toLocaleString('fr-FR')+'€':'✓')+'</span></td>'
+      +'<td style="padding:.5rem .7rem;text-align:center">'+statutBadge(r.statut)+'</td>'
+      +'</tr>';
+  });
+
+  // Ligne totaux
+  html+='<tr style="background:var(--forest);color:white;font-weight:700">'
+    +'<td style="padding:.5rem .7rem">TOTAUX ('+rows.length+' clients)</td>'
+    +'<td style="padding:.5rem .7rem;text-align:right">'+totDu.toLocaleString('fr-FR')+'€</td>'
+    +'<td style="padding:.5rem .7rem;text-align:right">'+(totRecuMois>0?'+'+totRecuMois.toLocaleString('fr-FR')+'€':'—')+'</td>'
+    +'<td style="padding:.5rem .7rem;text-align:right">'+totRecuTotal.toLocaleString('fr-FR')+'€</td>'
+    +'<td style="padding:.5rem .7rem;text-align:right">'+(totReste>0?totReste.toLocaleString('fr-FR')+'€':'✓')+'</td>'
+    +'<td style="padding:.5rem .7rem;text-align:center">'+(totReste===0?'✓ Tout soldé':totReste.toLocaleString('fr-FR')+'€ restant')+'</td>'
+    +'</tr>';
+
+  html+='</tbody></table></div>';
+
+  // Résumé rapide
+  var nbAttente=rows.filter(function(r){return r.reste>0;}).length;
+  if(nbAttente>0){
+    html+='<div style="margin-top:.7rem;padding:.6rem .9rem;background:#fff3cd;border-radius:8px;border-left:3px solid var(--warn);font-size:.8rem">'
+      +'⏳ <strong>'+nbAttente+' client'+(nbAttente>1?'s':'')+'</strong> avec paiements en attente — total à recevoir : <strong>'+totReste.toLocaleString('fr-FR')+'€</strong>'
+      +'</div>';
+  } else {
+    html+='<div style="margin-top:.7rem;padding:.6rem .9rem;background:#d4edda;border-radius:8px;border-left:3px solid var(--ok);font-size:.8rem">'
+      +'✅ <strong>Tous les clients sont soldés pour ce mois.</strong>'
+      +'</div>';
+  }
+
+  el.innerHTML=html;
+}
+
+function exportBilanCSV(){
+  var sel=document.getElementById('bilan-mois');
+  var mois=sel?sel.value:'bilan';
+  var clients=state.clients||[];
+  var parts=(mois||'').split('-');
+  var annee=parseInt(parts[0])||0;
+  var moisNum=parseInt(parts[1])||0;
+
+  var lignes=[['Client','Prénom','Total dû (€)','Reçu ce mois (€)','Reçu total (€)','Reste (€)','Statut','Date départ']];
+  clients.forEach(function(c){
+    var du=parseFloat(c.prix)||0;
+    var recuMois=0,recuTotal=0;
+    (c.paiements||[]).forEach(function(p){
+      if(p.recu){
+        recuTotal+=parseFloat(p.montant)||0;
+        if(p.date){var dp=p.date.split('/');if(dp.length===3&&parseInt(dp[2])===annee&&parseInt(dp[1])===moisNum)recuMois+=parseFloat(p.montant)||0;}
+      }
+    });
+    var reste=Math.max(0,du-recuTotal);
+    var statut=reste<=0?'Soldé':(recuTotal===0?'Aucun versement':'Partiel');
+    lignes.push([c.nom,c.prenom,du,recuMois,recuTotal,reste,statut,c.depart||'']);
+  });
+
+  var csv=lignes.map(function(r){return r.map(function(v){return '"'+String(v).replace(/"/g,'""')+'"';}).join(';');}).join('\r\n');
+  var blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;a.download='bilan-paiements-'+mois+'.csv';
+  document.body.appendChild(a);a.click();
+  setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(url);},500);
+  toast('📥 CSV exporté');
+}
+
 // ══════ FINANCE ══════
 function renderFinance(){
   var recettes=(state.clients||[]).reduce((a,c)=>{const r=(c.paiements||[]).filter(p=>p.recu).reduce((s,p)=>s+p.montant,0);return a+r;},0);
@@ -1992,23 +2196,23 @@ function _parseTextLines(lines,filename){
     var libelle=m[2].replace(/\s+/g,' ').trim();
     var signe=m[3];
     var montantStr=m[4].replace(/\s/g,'');
-    if(signe!=='-') return; // on ne garde que les débits
     var montant=parseFloat(montantStr.replace(',','.'));
     if(isNaN(montant)||montant<=0) return;
     matched++;
-    allOps.push({
-      date:dateStr,
-      libelle:libelle,
-      montant:montant,
-      cat:_guessCat(libelle),
-      dup:_isDuplicate(dateStr,montant,libelle)
-    });
+    if(signe==='-'){
+      allOps.push({date:dateStr,libelle:libelle,montant:montant,cat:_guessCat(libelle),dup:_isDuplicate(dateStr,montant,libelle)});
+    } else {
+      allOps.push({date:dateStr,libelle:libelle,montant:montant,credit:true,cat:'recette'});
+    }
   });
   if(!allOps.length){
-    _showReleveError('Aucune opération de débit trouvée ('+lines.length+' lignes lues).\nVérifiez la console pour voir les lignes extraites.');
+    _showReleveError('Aucune opération trouvée ('+lines.length+' lignes lues).\nVérifiez la console pour voir les lignes extraites.');
   } else {
-    window._releveLignes=allOps;
-    _afficherModalReleve(allOps,filename);
+    var debits=allOps.filter(function(o){return !o.credit;});
+    var credits=allOps.filter(function(o){return !!o.credit;});
+    window._releveLignes=debits;
+    window._releveCredits=credits;
+    _afficherModalReleve(debits,credits,filename);
   }
 }
 
@@ -2090,6 +2294,7 @@ function _extractRawTextFallback(binary){
 function _traiterTexteReleve(text,filename){
   var lignes=text.split('\n');
   var parsed=[];
+  var parsedCredits=[];
   // Format Caisse d'Épargne : date  date  LIBELLÉ  [+/-] montant,xx
   // Montant peut contenir des espaces : 1 400,00 ou 111,37
   // Signe + ou - avant le montant, parfois avec espace
@@ -2104,27 +2309,33 @@ function _traiterTexteReleve(text,filename){
     var montantStr=m[3].replace(/\s/g,'').replace(',','.');
     var montant=parseFloat(montantStr);
     if(isNaN(montant)) return;
-    // N'importer que les débits (montant négatif)
-    if(montant>=0) return;
-    // Ignorer les frais bancaires inférieurs à 0,50€ (frais VIR 0,10€ etc.)
     var abs=Math.abs(montant);
     var cat=_guessCat(libelle);
     var dup=_isDuplicate(date,abs,libelle);
-    parsed.push({date:date,libelle:libelle,montant:abs,cat:cat,dup:dup});
+    if(montant<0){
+      parsed.push({date:date,libelle:libelle,montant:abs,cat:cat,dup:dup});
+    } else {
+      parsedCredits.push({date:date,libelle:libelle,montant:abs,credit:true,cat:'recette'});
+    }
   });
 
-  if(!parsed.length){
-    _showReleveError('Aucune opération de débit trouvée dans ce PDF.\nVérifiez que c\'est bien un relevé Caisse d\'Épargne Pro (fichier numérique, non scanné).');
+  if(!parsed.length && !parsedCredits.length){
+    _showReleveError('Aucune opération trouvée dans ce PDF.\nVérifiez que c\'est bien un relevé Caisse d\'Épargne Pro (fichier numérique, non scanné).');
     return;
   }
   window._releveLignes=parsed;
-  _afficherModalReleve(parsed,filename);
+  window._releveCredits=parsedCredits;
+  _afficherModalReleve(parsed,parsedCredits,filename);
 }
 
 
-function _afficherModalReleve(lignes,filename){
+function _afficherModalReleve(lignes,credits,filename){
+  // Compatibilité : si appelé sans crédits (ancien code)
+  if(typeof credits === 'string'){filename=credits;credits=[];}
+  credits=credits||[];
+
   var info=document.getElementById('releve-parse-info');
-  if(info) info.textContent=lignes.length+' débit(s) trouvé(s) dans '+filename+' — décochez les doublons ou crédits non voulus avant import.';
+  if(info) info.textContent=lignes.length+' débit(s) et '+credits.length+' crédit(s) trouvé(s) dans '+filename;
 
   var wrap=document.getElementById('releve-lignes-wrap');
   if(!wrap) return;
@@ -2133,7 +2344,9 @@ function _afficherModalReleve(lignes,filename){
     return '<option value="'+k+'">'+DEP_CAT[k]+'</option>';
   }).join('');
 
-  wrap.innerHTML=lignes.map(function(l,idx){
+  // Section débits
+  var debitsHtml='<div style="font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem">📤 Débits ('+lignes.length+')</div>'
+  +lignes.map(function(l,idx){
     var checked=l.dup?'':'checked';
     var dupBadge=l.dup?'<span class="releve-dup-badge">⚠️ Doublon</span>':'';
     var rowCls=l.dup?'releve-ligne releve-dup':'releve-ligne';
@@ -2148,7 +2361,47 @@ function _afficherModalReleve(lignes,filename){
       +'</div>';
   }).join('');
 
-  // Pré-sélectionner la bonne catégorie
+  // Section crédits avec rapprochement client
+  var creditsHtml='';
+  if(credits.length){
+    // Construire liste des paiements en attente (recu===false)
+    var pending=[];
+    (state.clients||[]).forEach(function(c){
+      (c.paiements||[]).forEach(function(p,pi){
+        if(!p.recu) pending.push({cid:c.id,idx:pi,label:c.prenom+' '+c.nom+' — '+p.label,montant:parseFloat(p.montant)||0,nom:c.nom,prenom:c.prenom});
+      });
+    });
+
+    creditsHtml='<div style="margin-top:1rem;padding-top:.8rem;border-top:2px solid var(--border)">'
+      +'<div style="font-size:.75rem;font-weight:700;color:var(--moss);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem">💰 Crédits reçus ('+credits.length+') — Rapprochement client</div>';
+
+    credits.forEach(function(cr,ci){
+      // Chercher correspondance montant exact ou proche (±1€)
+      var matches=pending.filter(function(p){return Math.abs(p.montant-cr.montant)<=1;});
+      var selectHtml='<select id="crappr-'+ci+'" style="font-size:.75rem;padding:.2rem .4rem;border:1.5px solid var(--border);border-radius:6px;max-width:200px;background:var(--cream)">'
+        +'<option value="">— Ne pas rapprocher —</option>'
+        +pending.map(function(p,pi){
+          var sel=(matches.length===1&&matches[0]===p)?'selected':'';
+          return '<option value="'+p.cid+'|'+p.idx+'" '+sel+'>'+p.label+' ('+p.montant+'€)</option>';
+        }).join('')
+        +'</select>';
+      var matchBadge=matches.length===1?'<span style="background:#d4edda;color:#155724;font-size:.68rem;padding:.1rem .35rem;border-radius:8px;font-weight:700">✓ auto</span>'
+        :(matches.length>1?'<span style="background:#fff3cd;color:#856404;font-size:.68rem;padding:.1rem .35rem;border-radius:8px">'+matches.length+' choix</span>':'');
+      creditsHtml+='<div style="display:flex;align-items:center;gap:.5rem;padding:.4rem .3rem;border-bottom:1px solid var(--border);flex-wrap:wrap">'
+        +'<div style="flex:1;min-width:0">'
+          +'<div style="font-weight:600;font-size:.8rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+cr.libelle+' '+matchBadge+'</div>'
+          +'<div style="font-size:.7rem;color:var(--muted)">'+cr.date+'</div>'
+        +'</div>'
+        +'<span style="color:var(--ok);font-weight:700;font-size:.85rem;white-space:nowrap">+'+cr.montant.toLocaleString('fr-FR',{minimumFractionDigits:2})+'€</span>'
+        +selectHtml
+        +'</div>';
+    });
+    creditsHtml+='</div>';
+  }
+
+  wrap.innerHTML=debitsHtml+creditsHtml;
+
+  // Pré-sélectionner les catégories débits
   lignes.forEach(function(l,idx){
     var sel=document.getElementById('rcat-'+idx);
     if(sel) sel.value=l.cat;
@@ -2177,15 +2430,17 @@ function toggleAllReleve(checked){
 
 function _validerImportReleve(){
   var lignes=window._releveLignes||[];
+  var credits=window._releveCredits||[];
   if(!state.depenses) state.depenses=[];
   var nb=0;
+
+  // Importer les débits cochés
   lignes.forEach(function(l,idx){
     var chk=document.getElementById('rchk-'+idx);
     if(!chk||!chk.checked) return;
     var sel=document.getElementById('rcat-'+idx);
     var cat=sel?sel.value:(l.cat||'autre');
     var dateISO=_parseDateFR(l.date);
-    // Vérifier doublon à nouveau au moment de l'import
     if(_isDuplicate(l.date,l.montant,l.libelle)) return;
     state.depenses.unshift({
       id:Date.now().toString()+(Math.random()*1000|0),
@@ -2197,11 +2452,32 @@ function _validerImportReleve(){
     });
     nb++;
   });
+
+  // Rapprocher les crédits sélectionnés avec les paiements clients
+  var nbRappr=0;
+  credits.forEach(function(cr,ci){
+    var sel=document.getElementById('crappr-'+ci);
+    if(!sel||!sel.value) return;
+    var parts=sel.value.split('|');
+    var cid=parts[0];
+    var pidx=parseInt(parts[1]);
+    var c=(state.clients||[]).find(function(x){return x.id===cid;});
+    if(!c||!c.paiements||!c.paiements[pidx]) return;
+    c.paiements[pidx].recu=true;
+    // Utiliser la date du relevé (format dd/mm/yyyy)
+    c.paiements[pidx].date=cr.date;
+    nbRappr++;
+  });
+
   saveState();
   document.getElementById('modal-releve').classList.remove('active');
   window._releveLignes=[];
+  window._releveCredits=[];
   renderFinance();
-  toast('✅ '+nb+' dépense(s) importée(s) depuis le relevé');
+  if(nbRappr>0){renderCRM();renderBilanMensuel&&renderBilanMensuel();}
+  var msg='✅ '+nb+' dépense(s) importée(s)';
+  if(nbRappr>0) msg+=' · 💰 '+nbRappr+' paiement(s) client rapproché(s)';
+  toast(msg);
 }
 
 // ══════ OUTILS ══════
