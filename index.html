@@ -226,7 +226,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.7a.49 — 05 oct 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a.50 — 05 oct 2026</p>
     </div>
   </div>
 </div>
@@ -235,7 +235,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
 <div id="screen-admin" class="screen">
   <div class="topbar">
     <div class="topbar-brand"><span style="font-size:1.2rem">🌸</span><h2>Pomsky de Lilou</h2></div>
-    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.49</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
+    <div class="topbar-right"><span class="sync-dot">🔄</span><span class="topbar-badge">Éleveur</span><span style="font-size:.6rem;color:rgba(255,255,255,.45);font-family:'DM Mono',monospace">v0.7a.50</span><button class="btn-logout" id="btn-logout">Quitter</button></div>
   </div>
   <nav class="bottom-nav">
     <button class="active" data-panel="tableau"><span class="ni">📊</span>Tableau</button>
@@ -1838,70 +1838,98 @@ window._releveLignes=[];
 function importerReleve(input){
   if(!input.files||!input.files[0])return;
   var file=input.files[0];
-  input.value=''; // reset pour repermission
-  // Utiliser FileReader + PDF.js pour extraire le texte
+  input.value='';
   var reader=new FileReader();
   reader.onload=function(e){
-    var arrayBuffer=e.target.result;
-    _parsePdfReleve(arrayBuffer,file.name);
-  };
-  reader.readAsArrayBuffer(file);
-}
-
-function _parsePdfReleve(arrayBuffer,filename){
-  // Charger PDF.js depuis CDN si pas encore chargé
-  if(typeof pdfjsLib==='undefined'){
-    var script=document.createElement('script');
-    script.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
-    script.onload=function(){
-      pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-      _doParsePdf(arrayBuffer,filename);
-    };
-    script.onerror=function(){_showReleveError('Impossible de charger le lecteur PDF. Vérifiez votre connexion internet.');};
-    document.head.appendChild(script);
-  } else {
-    _doParsePdf(arrayBuffer,filename);
-  }
-}
-
-function _doParsePdf(arrayBuffer,filename){
-  var loadingTask=pdfjsLib.getDocument({data:arrayBuffer});
-  loadingTask.promise.then(function(pdf){
-    var numPages=pdf.numPages;
-    var allTextPromises=[];
-    for(var p=1;p<=numPages;p++){
-      allTextPromises.push(pdf.getPage(p).then(function(page){
-        return page.getTextContent().then(function(tc){
-          // Reconstituer les lignes à partir des items en les triant par position Y
-          var items=tc.items;
-          // Grouper par ligne (Y proche)
-          var rows=[];
-          items.forEach(function(item){
-            var y=Math.round(item.transform[5]);
-            var found=false;
-            for(var r=0;r<rows.length;r++){
-              if(Math.abs(rows[r].y-y)<4){
-                rows[r].items.push(item);
-                found=true;break;
-              }
-            }
-            if(!found) rows.push({y:y,items:[item]});
-          });
-          // Trier rows du haut vers le bas (Y décroissant en PDF coords)
-          rows.sort(function(a,b){return b.y-a.y;});
-          // Construire le texte de chaque ligne trié par X
-          return rows.map(function(row){
-            row.items.sort(function(a,b){return a.transform[4]-b.transform[4];});
-            return row.items.map(function(i){return i.str;}).join(' ').replace(/\s+/g,' ').trim();
-          }).join('\n');
-        });
-      }));
+    try{
+      var text=_extractTextFromPdf(e.target.result);
+      if(!text||text.length<20){
+        _showReleveError('Impossible d\'extraire le texte de ce PDF.\nVérifiez que c\'est bien un relevé Caisse d\'Épargne Pro (fichier numérique, non scanné).');
+        document.getElementById('modal-releve').classList.add('active');
+        return;
+      }
+      _traiterTexteReleve(text,file.name);
+    }catch(err){
+      _showReleveError('Erreur lecture PDF : '+err);
+      document.getElementById('modal-releve').classList.add('active');
     }
-    Promise.all(allTextPromises).then(function(pages){
-      var fullText=pages.join('\n');
-      _traiterTexteReleve(fullText,filename);
-    }).catch(function(err){_showReleveError('Erreur lecture pages : '+err);});
-  }).catch(function(err){_showReleveError('Erreur lecture PDF : '+err);});
+  };
+  reader.readAsBinaryString(file);
+}
+
+// Parser PDF natif — extrait les chaînes texte des flux PDF sans librairie externe
+// Fonctionne sur les PDF Caisse d'Épargne (texte non chiffré, encodage standard)
+function _extractTextFromPdf(binary){
+  // Decoder les objets stream PDF contenant du texte
+  var text='';
+  // Chercher tous les flux (stream...endstream)
+  var streamRe=/stream\r?\n([\s\S]*?)\r?\nendstream/g;
+  var match;
+  while((match=streamRe.exec(binary))!==null){
+    var raw=match[1];
+    // Extraire les opérateurs Tj et TJ (affichage texte PDF)
+    // Tj : (texte)Tj
+    var tjRe=/\(([^)]*)\)\s*Tj/g;
+    var m2;
+    var lineAccum='';
+    while((m2=tjRe.exec(raw))!==null){
+      var s=_decodePdfStr(m2[1]);
+      lineAccum+=s;
+    }
+    // TJ : [(texte) espacement (texte)...]TJ
+    var tjArr=/\[((?:[^[\]]*(?:\([^)]*\))?[^[\]]*)*)\]\s*TJ/g;
+    while((m2=tjArr.exec(raw))!==null){
+      var inner=m2[1];
+      var partRe=/\(([^)]*)\)/g;
+      var m3;
+      while((m3=partRe.exec(inner))!==null){
+        lineAccum+=_decodePdfStr(m3[1]);
+      }
+    }
+    // Ajouter séparateur de lignes entre les BT...ET (blocs texte)
+    var btRe=/BT([\s\S]*?)ET/g;
+    var bm;
+    while((bm=btRe.exec(raw))!==null){
+      var block=bm[1];
+      // Extraire texte du bloc
+      var blockText='';
+      var tj2=/\(([^)]*)\)\s*Tj/g;
+      var bm2;
+      while((bm2=tj2.exec(block))!==null) blockText+=_decodePdfStr(bm2[1])+' ';
+      var tja=/\[((?:[^[\]]*(?:\([^)]*\))?[^[\]]*)*)\]\s*TJ/g;
+      while((bm2=tja.exec(block))!==null){
+        var inn=bm2[1];var pr=/\(([^)]*)\)/g;var pm;
+        while((pm=pr.exec(inn))!==null) blockText+=_decodePdfStr(pm[1]);
+      }
+      if(blockText.trim()) text+=blockText.trim()+'\n';
+    }
+  }
+  // Fallback : chercher patterns de dates directement dans le binaire brut
+  if(text.length<50){
+    text=_extractRawTextFallback(binary);
+  }
+  return text;
+}
+
+function _decodePdfStr(s){
+  // Décoder les séquences d'échappement PDF basiques
+  return s.replace(/\\n/g,'\n').replace(/\\r/g,'\r').replace(/\\t/g,'\t')
+          .replace(/\\\(/g,'(').replace(/\\\)/g,')').replace(/\\\\/g,'\\')
+          .replace(/\\(\d{3})/g,function(m,oct){return String.fromCharCode(parseInt(oct,8));});
+}
+
+function _extractRawTextFallback(binary){
+  // Extraire les séquences ASCII lisibles du binaire brut (fallback)
+  var result='';
+  var buf='';
+  for(var i=0;i<binary.length;i++){
+    var c=binary.charCodeAt(i);
+    if(c>=32&&c<127){buf+=binary[i];}
+    else if(buf.length>4){result+=buf+'\n';buf='';}
+    else{buf='';}
+  }
+  if(buf.length>4) result+=buf;
+  return result;
 }
 
 function _traiterTexteReleve(text,filename){
