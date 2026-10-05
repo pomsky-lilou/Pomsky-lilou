@@ -228,7 +228,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.7a.57 — 05 oct 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a.59 — 05 oct 2026</p>
     </div>
   </div>
 </div>
@@ -709,8 +709,8 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <div class="modal-actions" style="margin-top:.8rem">
       <button class="btn btn-sm btn-secondary" onclick="toggleAllReleve(true)">✅ Tout cocher</button>
       <button class="btn btn-sm btn-secondary" onclick="toggleAllReleve(false)">⬜ Tout décocher</button>
-      <button class="btn btn-ok btn-sm" id="btn-valider-releve">➖ Importer sélection</button>
-      <button class="btn btn-secondary btn-sm" data-close="modal-releve">Annuler</button>
+      <button class="btn btn-ok btn-sm" id="btn-valider-releve" onclick="_validerImportReleve()">➖ Importer sélection</button>
+      <button class="btn btn-secondary btn-sm" onclick="closeM('modal-releve')">Annuler</button>
     </div>
   </div>
 </div>
@@ -1876,105 +1876,82 @@ function importerReleve(input){
   reader.readAsArrayBuffer(file);
 }
 
-// Parser via PDF.js — détecte les opérations directement par position X/Y
+// Parser via PDF.js — reconstitue le texte par lignes (tri Y/X) puis regex
 function _doParsePdfJs(arrayBuffer,filename){
   try{
     var loadingTask=pdfjsLib.getDocument({data:arrayBuffer});
     loadingTask.promise.then(function(pdf){
-      var allOps=[];
+      var allLines=[];
       var total=pdf.numPages;
       var done=0;
       for(var p=1;p<=total;p++){
         (function(pageNum){
           pdf.getPage(pageNum).then(function(page){
             page.getTextContent().then(function(tc){
-              // Grouper les items par ligne (Y proche ±3pt)
+              // Grouper les items par Y (±5pt) puis trier par X → reconstituer chaque ligne de texte
               var rows=[];
               tc.items.forEach(function(item){
-                if(!item.str||!item.str.trim()) return;
+                if(!item.str) return;
                 var y=Math.round(item.transform[5]);
                 var x=item.transform[4];
                 var found=false;
                 for(var r=0;r<rows.length;r++){
-                  if(Math.abs(rows[r].y-y)<4){
-                    rows[r].items.push({x:x,s:item.str.trim()});
-                    found=true;break;
-                  }
+                  if(Math.abs(rows[r].y-y)<5){rows[r].items.push({x:x,s:item.str});found=true;break;}
                 }
-                if(!found) rows.push({y:y,items:[{x:x,s:item.str.trim()}]});
+                if(!found) rows.push({y:y,items:[{x:x,s:item.str}]});
               });
+              // Trier les lignes de haut en bas (Y décroissant en PDF)
               rows.sort(function(a,b){return b.y-a.y;});
-              // LOG: afficher les 15 premières lignes pour debug
-              if(pageNum===1){
-                console.log('[releve] Page 1 — '+rows.length+' lignes détectées');
-                rows.slice(0,15).forEach(function(row,i){
-                  var repr=row.items.map(function(it){return '"'+it.s+'"(x='+Math.round(it.x)+')';}).join(' | ');
-                  console.log('[releve] ligne'+i+'(y='+row.y+'): '+repr);
-                });
-              }
               rows.forEach(function(row){
                 row.items.sort(function(a,b){return a.x-b.x;});
-                // Chercher pattern : un item ressemble à une date dd/mm/yyyy
-                var dateRe=/^(\d{2}\/\d{2}\/\d{4})$/;
-                var montantRe=/^([+\-])?\s*[\d\s]+,\d{2}$/;
-                var items=row.items;
-                if(items.length<3) return;
-                // Chercher la date en début de ligne
-                var dateStr=null;var dateIdx=-1;
-                for(var i=0;i<Math.min(3,items.length);i++){
-                  if(dateRe.test(items[i].s)){dateStr=items[i].s;dateIdx=i;break;}
-                }
-                if(!dateStr) return;
-                // Chercher le montant en fin de ligne
-                var montantStr=null;var montantIdx=-1;
-                // Le montant peut être sur 1 ou 2 items consécutifs (signe + chiffres)
-                for(var j=items.length-1;j>dateIdx+1;j--){
-                  var candidate=items[j].s;
-                  // cas: item = "-" ou "+" suivi de "1 400,00" ou tout en un
-                  if(montantRe.test(candidate)){
-                    montantStr=candidate;montantIdx=j;
-                    // si item précédent est juste le signe
-                    if(j>0&&(items[j-1].s==='-'||items[j-1].s==='+')){
-                      montantStr=items[j-1].s+candidate;montantIdx=j-1;
-                    }
-                    break;
-                  }
-                  // signe seul
-                  if((candidate==='-'||candidate==='+')&&j+1<items.length&&/[\d\s]+,\d{2}$/.test(items[j+1].s)){
-                    montantStr=candidate+items[j+1].s;montantIdx=j;break;
-                  }
-                }
-                if(!montantStr) return;
-                // Libellé = tout ce qui est entre (dateIdx+2) et montantIdx-1
-                // ignorer la 2ème date (date de valeur)
-                var startLib=dateIdx+2;
-                // vérifier si l'item suivant est aussi une date (date valeur)
-                if(startLib<items.length&&dateRe.test(items[startLib].s)) startLib++;
-                var libParts=[];
-                for(var k=startLib;k<montantIdx;k++) libParts.push(items[k].s);
-                var libelle=libParts.join(' ').replace(/\s+/g,' ').trim();
-                if(!libelle) return;
-                var mStr=montantStr.replace(/\s/g,'').replace(',','.');
-                var montant=parseFloat(mStr);
-                if(isNaN(montant)||montant>=0) return;
-                var abs=Math.abs(montant);
-                allOps.push({date:dateStr,libelle:libelle,montant:abs,cat:_guessCat(libelle),dup:_isDuplicate(dateStr,abs,libelle)});
+                var line=row.items.map(function(it){return it.s;}).join(' ').replace(/\s+/g,' ').trim();
+                if(line) allLines.push(line);
               });
               done++;
               if(done===total){
-                if(!allOps.length){
-                  _showReleveError('Aucune opération de débit trouvée.\nVérifiez que c\'est bien un relevé Caisse d\'Épargne Pro.');
-                } else {
-                  window._releveLignes=allOps;
-                  _afficherModalReleve(allOps,filename);
-                }
+                _parseTextLines(allLines,filename);
               }
             });
-          }).catch(function(e){done++;if(done===total&&!allOps.length)_showReleveError('Erreur page : '+e);});
+          }).catch(function(e){done++;if(done===total)_showReleveError('Erreur page : '+e);});
         })(p);
       }
     }).catch(function(err){_showReleveError('Erreur PDF.js : '+err);});
   }catch(e){_showReleveError('Erreur : '+e);}
+}
+
+// Parser le texte ligne par ligne — format Caisse d'Épargne Pro
+// Pattern: DD/MM/YYYY   DD/MM/YYYY   LIBELLÉ...   - montant,xx
+function _parseTextLines(lines,filename){
+  var allOps=[];
+  // Regex : date opération, date valeur (optionnelle), libellé, signe+montant
+  // Le montant peut contenir des espaces : "1 200,00"
+  var re=/(\d{2}\/\d{2}\/\d{4})\s+\d{2}\/\d{2}\/\d{4}\s+(.+?)\s+([-+])\s*([\d\s]+,\d{2})\s*$/;
+  lines.forEach(function(line){
+    var m=line.match(re);
+    if(!m) return;
+    var dateStr=m[1];
+    var libelle=m[2].replace(/\s+/g,' ').trim();
+    var signe=m[3];
+    var montantStr=m[4].replace(/\s/g,'');
+    if(signe!=='-') return; // on ne garde que les débits
+    var montant=parseFloat(montantStr.replace(',','.'));
+    if(isNaN(montant)||montant<=0) return;
+    // Filtrer les frais de virement < 1€ (FRAIS VIR, COMMISSIONS minimes)
+    // On garde tout pour que l'utilisateur choisisse
+    allOps.push({
+      date:dateStr,
+      libelle:libelle,
+      montant:montant,
+      cat:_guessCat(libelle),
+      dup:_isDuplicate(dateStr,montant,libelle)
+    });
+  });
+  if(!allOps.length){
+    _showReleveError('Aucune opération de débit trouvée.\nVérifiez que c\'est bien un relevé Caisse d\'Épargne Pro (compte courant).');
+  } else {
+    window._releveLignes=allOps;
+    _afficherModalReleve(allOps,filename);
+  }
 }
 
 // Parser PDF natif — extrait les chaînes texte des flux PDF sans librairie externe
