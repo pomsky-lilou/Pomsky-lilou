@@ -121,9 +121,9 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
 .chiot-card{background:var(--white);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:.6rem .85rem;margin-bottom:.45rem;display:flex;align-items:center;gap:.65rem}
 .chiot-av{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.9rem;font-weight:700;color:white;flex-shrink:0}
 .chiot-av.male{background:var(--info)}.chiot-av.female{background:#e91e8c}
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:500;align-items:center;justify-content:center;padding:1rem;overflow-y:auto}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:500;align-items:flex-start;justify-content:center;padding:1rem;overflow-y:auto;-webkit-overflow-scrolling:touch;cursor:default}
 .modal-overlay.open,.modal-overlay.active{display:flex}
-.modal{background:white;border-radius:16px;padding:1.5rem;max-width:460px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);animation:modal-in .22s ease;max-height:88vh;overflow-y:auto}
+.modal{background:white;border-radius:16px;padding:1.5rem;max-width:460px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);animation:modal-in .22s ease;max-height:88vh;overflow-y:auto;pointer-events:auto;position:relative;z-index:501}
 @keyframes modal-in{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
 .modal h2{font-family:'DM Serif Display',serif;color:var(--forest);margin-bottom:.7rem;font-size:1.1rem}
 .modal-actions{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.9rem}
@@ -228,7 +228,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.7a.55 — 05 oct 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a.57 — 05 oct 2026</p>
     </div>
   </div>
 </div>
@@ -450,7 +450,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
           <div class="card-header" style="margin-bottom:.4rem">
             <h2>Historique</h2>
             <label for="pdf-releve-input" class="btn btn-info btn-sm" style="cursor:pointer">📂 Importer relevé PDF</label>
-            <input type="file" id="pdf-releve-input" accept=".pdf,application/pdf" style="opacity:0;width:1px;height:1px;position:absolute;pointer-events:none" onchange="importerReleve(this)">
+            <input type="file" id="pdf-releve-input" accept=".pdf,application/pdf" style="position:fixed;top:-200px;left:-200px;width:1px;height:1px;opacity:0;pointer-events:none" onchange="importerReleve(this)">
           </div>
           <div id="dep-perso-solde" style="display:none;background:#fff3e0;border-radius:6px;padding:.4rem .8rem;font-size:.8rem;color:#7B4B00;margin-bottom:.5rem"></div>
           <div id="dep-list"></div>
@@ -1904,6 +1904,14 @@ function _doParsePdfJs(arrayBuffer,filename){
                 if(!found) rows.push({y:y,items:[{x:x,s:item.str.trim()}]});
               });
               rows.sort(function(a,b){return b.y-a.y;});
+              // LOG: afficher les 15 premières lignes pour debug
+              if(pageNum===1){
+                console.log('[releve] Page 1 — '+rows.length+' lignes détectées');
+                rows.slice(0,15).forEach(function(row,i){
+                  var repr=row.items.map(function(it){return '"'+it.s+'"(x='+Math.round(it.x)+')';}).join(' | ');
+                  console.log('[releve] ligne'+i+'(y='+row.y+'): '+repr);
+                });
+              }
               rows.forEach(function(row){
                 row.items.sort(function(a,b){return a.x-b.x;});
                 // Chercher pattern : un item ressemble à une date dd/mm/yyyy
