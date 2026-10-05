@@ -8,6 +8,7 @@
 <title>Pomsky de Lilou — Éleveur</title>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" crossorigin="anonymous"></script>
 <script>
 const firebaseConfig={apiKey:"AIzaSyBhrTrkBQAU7PfkTsvIXJFQVQJEQ5NNlP8",authDomain:"pomsky-lilou.firebaseapp.com",databaseURL:"https://pomsky-lilou-default-rtdb.europe-west1.firebasedatabase.app",projectId:"pomsky-lilou",storageBucket:"pomsky-lilou.firebasestorage.app",messagingSenderId:"404717143128",appId:"1:404717143128:web:5abd1351d79fa0f92db62d"};
 try{firebase.initializeApp(firebaseConfig);const db=firebase.database();window._fb={connected:false,save:function(d){try{db.ref('pomsky').set(JSON.parse(JSON.stringify(d)));}catch(e){}},load:function(cb){db.ref('pomsky').get().then(s=>cb(s.exists()?s.val():null)).catch(()=>cb(null));},listen:function(cb){db.ref('pomsky').on('value',s=>{if(s.exists())cb(s.val());});}};db.ref('.info/connected').on('value',s=>{window._fb.connected=!!s.val();document.querySelectorAll('.sync-dot').forEach(el=>{el.textContent=window._fb.connected?'🟢':'🔴';});});}catch(e){window._fb=null;}
@@ -227,7 +228,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.7a.52 — 05 oct 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a.53 — 05 oct 2026</p>
     </div>
   </div>
 </div>
@@ -448,8 +449,8 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
         <div class="card" style="margin-top:.5rem">
           <div class="card-header" style="margin-bottom:.4rem">
             <h2>Historique</h2>
-            <button class="btn btn-info btn-sm" onclick="document.getElementById('pdf-releve-input').click()">📂 Importer relevé PDF</button>
-            <input type="file" id="pdf-releve-input" accept=".pdf,application/pdf" style="display:none" onchange="importerReleve(this)">
+            <label for="pdf-releve-input" class="btn btn-info btn-sm" style="cursor:pointer">📂 Importer relevé PDF</label>
+            <input type="file" id="pdf-releve-input" accept=".pdf,application/pdf" style="display:none;position:absolute;left:-9999px" onchange="importerReleve(this)">
           </div>
           <div id="dep-perso-solde" style="display:none;background:#fff3e0;border-radius:6px;padding:.4rem .8rem;font-size:.8rem;color:#7B4B00;margin-bottom:.5rem"></div>
           <div id="dep-list"></div>
@@ -1839,39 +1840,34 @@ window._releveLignes=[];
 function importerReleve(input){
   if(!input.files||!input.files[0])return;
   var file=input.files[0];
-  input.value='';
+  var fname=file.name;
   // Afficher modal avec message de chargement
   document.getElementById('releve-parse-info').textContent='⏳ Lecture du PDF en cours…';
   document.getElementById('releve-lignes-wrap').innerHTML='';
   document.getElementById('releve-parse-error').style.display='none';
   document.getElementById('modal-releve').classList.add('active');
 
+  // Configurer PDF.js worker (pré-chargé dans le <head>)
+  if(typeof pdfjsLib!=='undefined'&&pdfjsLib.GlobalWorkerOptions){
+    pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+
   var reader=new FileReader();
   reader.onload=function(e){
+    // Effacer l'input APRÈS avoir lu le fichier (évite bug Safari)
+    try{input.value='';}catch(ex){}
     var buf=e.target.result;
     if(typeof pdfjsLib!=='undefined'){
-      _doParsePdfJs(buf,file.name);
+      _doParsePdfJs(buf,fname);
     } else {
-      // Charger PDF.js depuis CDN
-      var s=document.createElement('script');
-      s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
-      s.onload=function(){
-        if(pdfjsLib&&pdfjsLib.GlobalWorkerOptions){
-          pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-        }
-        _doParsePdfJs(buf,file.name);
+      // Fallback : parser natif si PDF.js inaccessible
+      var reader2=new FileReader();
+      reader2.onload=function(e2){
+        var text=_extractTextFromPdf(e2.target.result);
+        if(text&&text.length>50){_traiterTexteReleve(text,fname);}
+        else{_showReleveError('PDF.js inaccessible et extraction native insuffisante.\nConnectez-vous à internet pour importer un relevé.');}
       };
-      s.onerror=function(){
-        // Fallback : parser natif si CDN inaccessible
-        var reader2=new FileReader();
-        reader2.onload=function(e2){
-          var text=_extractTextFromPdf(e2.target.result);
-          if(text&&text.length>50){_traiterTexteReleve(text,file.name);}
-          else{_showReleveError('PDF.js inaccessible et extraction native insuffisante.\nConnectez-vous à internet pour importer un relevé.');}
-        };
-        reader2.readAsBinaryString(new Blob([buf]));
-      };
-      document.head.appendChild(s);
+      reader2.readAsBinaryString(new Blob([buf]));
     }
   };
   reader.readAsArrayBuffer(file);
