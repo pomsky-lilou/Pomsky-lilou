@@ -228,7 +228,7 @@ h3{font-size:.8rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase
     <button class="btn btn-primary" id="btn-login">Connexion</button>
     <div style="text-align:center;margin-top:1rem;padding-top:.8rem;border-top:1px solid var(--border)">
       <p style="font-size:.75rem;color:var(--moss);font-weight:700">🇦🇩 KAS Solución</p>
-      <p style="font-size:.68rem;color:var(--muted)">v0.7a.63 — 05 oct 2026</p>
+      <p style="font-size:.68rem;color:var(--muted)">v0.7a.68 — 05 oct 2026</p>
     </div>
   </div>
 </div>
@@ -1838,7 +1838,7 @@ function _isDuplicate(date,montant,desc){
 window._releveLignes=[];
 
 function importerReleve(input){
-  console.log('[releve] importerReleve appelée, files:', input&&input.files&&input.files.length);
+
   if(!input.files||!input.files[0])return;
   var file=input.files[0];
   var fname=file.name;
@@ -1847,7 +1847,7 @@ function importerReleve(input){
   document.getElementById('releve-lignes-wrap').innerHTML='';
   document.getElementById('releve-parse-error').style.display='none';
   var modalEl=document.getElementById('modal-releve');
-  console.log('[releve] modal element:', modalEl);
+
   if(modalEl) modalEl.classList.add('active');
 
   // Configurer PDF.js worker (pré-chargé dans le <head>)
@@ -1883,18 +1883,17 @@ function _doParsePdfJs(arrayBuffer,filename){
     loadingTask.promise.then(function(pdf){
       var allLines=[];
       var total=pdf.numPages;
-      console.log('[releve] PDF chargé —', total, 'pages');
       // Lecture séquentielle page par page (évite race condition async)
       function _lirePage(pageNum){
         if(pageNum>total){
-          console.log('[releve] Toutes pages lues — total lignes:', allLines.length);
+
           _parseTextLines(allLines,filename);
           return;
         }
         pdf.getPage(pageNum).then(function(page){
           page.getTextContent().then(function(tc){
-            console.log('[releve] page', pageNum, '—', tc.items.length, 'items');
-            // Grouper les items par Y (±15pt) puis trier par X
+
+            // Grouper les items par Y (±3pt) puis trier par X
             var rows=[];
             tc.items.forEach(function(item){
               if(!item.str||!item.str.trim()) return;
@@ -1902,7 +1901,7 @@ function _doParsePdfJs(arrayBuffer,filename){
               var x=item.transform[4];
               var found=false;
               for(var r=0;r<rows.length;r++){
-                if(Math.abs(rows[r].y-y)<15){rows[r].items.push({x:x,s:item.str});found=true;break;}
+                if(Math.abs(rows[r].y-y)<3){rows[r].items.push({x:x,s:item.str});found=true;break;}
               }
               if(!found) rows.push({y:y,items:[{x:x,s:item.str}]});
             });
@@ -1914,11 +1913,11 @@ function _doParsePdfJs(arrayBuffer,filename){
             });
             _lirePage(pageNum+1);
           }).catch(function(e){
-            console.log('[releve] getTextContent page',pageNum,'erreur:',e);
+
             _lirePage(pageNum+1);
           });
         }).catch(function(e){
-          console.log('[releve] getPage',pageNum,'erreur:',e);
+
           _lirePage(pageNum+1);
         });
       }
@@ -1930,9 +1929,6 @@ function _doParsePdfJs(arrayBuffer,filename){
 // Parser le texte ligne par ligne — format Caisse d'Épargne Pro
 // Pattern: DD/MM/YYYY   DD/MM/YYYY   LIBELLÉ...   - montant,xx
 function _parseTextLines(lines,filename){
-  // DEBUG — afficher les lignes 20 à 80 (les opérations sont après l'en-tête)
-  console.log('[releve] _parseTextLines — total lignes:', lines.length);
-  for(var d=0;d<Math.min(80,lines.length);d++) console.log('[releve] L'+d+':', JSON.stringify(lines[d]));
   var allOps=[];
   // PDF.js reconstruit les dates avec espaces : "25 / 07 / 20 26" → normaliser d'abord
   // Normalisation : "DD / MM / YYYY" ou "DD / MM / YY YY" → "DD/MM/YYYY"
@@ -1945,13 +1941,44 @@ function _parseTextLines(lines,filename){
       return (d.length<2?'0'+d:d)+'/'+(mo.length<2?'0'+mo:mo)+'/'+y;
     });
   }
+  // Normaliser toutes les lignes d'abord
+  var normLines=lines.map(normaliseLigne);
+  // Supprimer les lignes parasites : continuations de libellé et en-têtes de page
+  normLines=normLines.filter(function(l){
+    if(/^-(?:Provenance|R[ée]f\.|Destinataire|Donneur|Mandat|Motif)/i.test(l.trim())) return false;
+    if(/Relev[eé]\s+N[°o]/i.test(l)) return false;
+    if(/^Page\s+\d/i.test(l.trim())) return false;
+    return true;
+  });
+  // Fusionner les lignes orphelines : si ligne N contient une date mais pas de montant,
+  // et ligne N+1 contient un montant isolé (ex: "- 75,52"), les fusionner
+  var reMontantSeul=/^\s*[-+]\s*[\d\s]+,\d{2}\s*$/;
+  var reDateDebut=/^\d{2}\/\d{2}\/\d{4}/;
+  var mergedLines=[];
+  for(var i=0;i<normLines.length;i++){
+    var l=normLines[i];
+    if(reDateDebut.test(l)&&!(l.match(/[-+]\s*[\d\s]+,\d{2}/))&&i+1<normLines.length&&reMontantSeul.test(normLines[i+1])){
+      mergedLines.push(l+' '+normLines[i+1].trim());
+      i++; // sauter la ligne suivante déjà fusionnée
+    } else {
+      mergedLines.push(l);
+    }
+  }
+  // Regex principales — deux dates puis libellé puis signe montant
   var re=/(\d{2}\/\d{2}\/\d{4})\s+\d{2}\/\d{2}\/\d{4}\s+(.+?)\s+([-+])\s*([\d\s]+,\d{2})\s*$/;
   var re2=/(\d{2}\/\d{2}\/\d{4})\s+(.+?)\s+([-+])\s*([\d\s]+,\d{2})\s*$/;
+  // Regex de secours : ligne commençant par date + N.XXXXXXX MLLE ... + libellé + signe montant
+  // (PDF.js colle parfois les infos de compte au libellé)
+  var reCompte=/(\d{2}\/\d{2}\/\d{4})\s+\d{2}\/\d{2}\/\d{4}\s+N\.\d+\s+(?:M(?:LLE?|\.)\s+)?[\w\s]+?\s+(.+?)\s+([-+])\s*([\d\s]+,\d{2})\s*$/;
   var matched=0;
-  lines.forEach(function(rawLine){
-    var line=normaliseLigne(rawLine);
-    var m=line.match(re)||line.match(re2);
-    if(!m) return;
+  mergedLines.forEach(function(rawLine){
+    var line=rawLine;
+    var m=line.match(re)||line.match(re2)||line.match(reCompte);
+    if(!m){
+      // Log uniquement les lignes avec une date qui n'ont pas matché
+      if(/\d{2}\/\d{2}\/\d{4}/.test(line)&&/,\d{2}/.test(line)) console.log('[releve] NON MATCHÉ:',JSON.stringify(line));
+      return;
+    }
     var dateStr=m[1];
     var libelle=m[2].replace(/\s+/g,' ').trim();
     var signe=m[3];
@@ -1970,7 +1997,6 @@ function _parseTextLines(lines,filename){
       dup:_isDuplicate(dateStr,montant,libelle)
     });
   });
-  console.log('[releve] parsing terminé — lignes matchées:', matched, '— ops trouvées:', allOps.length);
   if(!allOps.length){
     _showReleveError('Aucune opération de débit trouvée ('+lines.length+' lignes lues).\nVérifiez la console pour voir les lignes extraites.');
   } else {
